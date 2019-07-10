@@ -2,13 +2,18 @@
 title: "R Notebook"
 output: html_notebook
 ---
+7/10/19
+Yesterday I finished collecting all of my temperature sensors, and today begins the data analysis. 
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+Goals for today:
+  Figure out how to use Github
+  Format temperature data
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+Work flow
+I've got an individual csv file for each sensor, so I need to read all of these in and combine the data. I need to rename each number to the sensor location. I need to round all the times to the nearest 10 minute interval so they line up.
 
 ```{r}
-plot(cars)
+
 ```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
@@ -16,3 +21,7 @@ Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by press
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
 
 The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```{r}
+
+```
+
