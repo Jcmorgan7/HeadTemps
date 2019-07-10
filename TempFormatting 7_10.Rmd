@@ -12,8 +12,17 @@ Goals for today:
 Work flow
 I've got an individual csv file for each sensor, so I need to read all of these in and combine the data. I need to rename each number to the sensor location. I need to round all the times to the nearest 10 minute interval so they line up.
 
-```{r}
+```{r global_options, include=FALSE}
+#global settings
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+```
 
+```{r}
+#Packages
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(ggridges)
 ```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
