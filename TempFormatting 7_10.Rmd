@@ -27,17 +27,10 @@ library(ggridges)
 
 ```{r}
 #read in all the csv files
-temp <- list.files(pattern ="*.csv")
-for (i in 1:length(temp)){
-  assign(temp[i], read.csv(temp[i], skip = 19))
-  mutate(temp[i], id = i)
-}
-
-setwd("~/Documents/")
-files <- list.files(path = "data/")
+files <- list.files(path = "Temp data 7_9_19 raw/")
 f <- list()
 for (i in 1:length(files)) {
-  f[[i]] <- read.csv(paste0("data/",files[i]), header = T, sep = ";")
+  f[[i]] <- read.csv(paste0("Temp data 7_9_19 raw/",files[i]), header = T, sep = ";")
 }
 ```
 
