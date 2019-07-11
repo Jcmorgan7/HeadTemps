@@ -28,9 +28,22 @@ library(ggridges)
 ```{r}
 #read in all the csv files
 files <- list.files(path = "Temp data 7_9_19 raw/")
-f <- list()
+
 for (i in 1:length(files)) {
-  f[[i]] <- read.csv(paste0("Temp data 7_9_19 raw/",files[i]), header = T, sep = ";")
+  if(i == 1){ 
+    data <- read.csv(paste0("Temp data 7_9_19 raw/",
+                            files[i]), 
+                     skip = 19, 
+                     header = T, 
+                     sep = ",")}
+  if(i > 1){
+    temporary <- read.csv(paste0("Temp data 7_9_19 raw/", 
+                                 files[i]),
+                          skip = 20,
+                          header = F,
+                          sep = ",")
+  }
+  data <- rbind(data, temporary)
 }
 ```
 
