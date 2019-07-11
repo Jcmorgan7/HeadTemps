@@ -33,9 +33,6 @@ sites <- read.csv("site_temps_7_11.csv", header = T, sep = ",")
     sites$f.col.time <- mdy_hm(sites$collection.time)
     sites$f.dep.time <- mdy_hm(sites$deploy.time)
 
-#t <- minutes(10)
-#list of site locs in order by sensor numbers?
-
 for (i in 1:length(files)) {
     data <- read.csv(paste0("Temp data 7_9_19 raw/",
                             files[i]), 
@@ -48,47 +45,52 @@ for (i in 1:length(files)) {
     data$sensor <- gsub("data","\\1", data$sensor)
     data$sensor <- gsub(".csv","\\1", data$sensor)
     #making column with site loc
-    #cbind(data, site = sites[i])
     #round temperatures to nearest tenth
     data$rnd.dates <- round_date(data$fdates, "10 minutes")
   
   if(i == 1)alldat <- data                 
   if(i > 1)alldat <- rbind(alldat, data)
-  #row.names(datasetname) <- 1:nrow(datasetname)
-  #alldat$fdates <- mdy_hms(alldat$Date.Time)
-  #alldat$rdates <- round_date()
-  
 }
 
 ```
 
+Format the data to work with.
 ```{r}
 #formatting data to remove undeployed sensors
+
+#finding ones that weren't deployed
 data.sensors <- unique(alldat$sensor)
 sites.sensors <- unique(sites$sensor)
 diff <- setdiff(data.sensors, sites.sensors)
+#removing sensors that weren't deployed
 alldat <- filter(alldat, sensor %in% sites$sensor)
-#not sure if it worked
-
 #add site location column
-alldat <- mutate(alldat, loc = 2)
-alldat <- mutate(alldat, loc = sites$site[sites$sensor == alldat$sensor])
-
 alldat$sensor <- as.numeric(alldat$sensor)
+#removed sensor 54- something wrong
+alldat2 <- filter(alldat, sensor != 54)
+#adding sites data sheet- matching sensors with sites
 alldat2 <- inner_join(alldat, sites, by = "sensor")
+#identify list of sites
+locs <- unique(alldat2$site)
 
+#formatting time to beginning and end of deployment period
+start <- mdy_hm("6-13-19 13:10")
+end <- mdy_hm("7-8-19 11:20")
+alldat3 <- filter(alldat2, rnd.dates >= start)
+alldat3 <- filter(alldat3, rnd.dates <= end)
+
+master <- select(alldat3, Value, sensor, rnd.dates, site)
 ```
 
-Problems:
-  when i call up the row by number, it gives me multiple instances of it
-  
+
 ```{r}
 #plotting time!
-all.temps <- ggplot()+
-  geom_boxplot(alldat, 
-                      mapping = aes(y = Value, x = sensor))+  theme_classic()+
-  xlab("Temp (C)")
-all.temps
+plot <- ggplot(data = alldat2)+
+  geom_line(aes(x = rnd.dates, y = Value, color = site == LS0A))+
+  theme_classic()+
+    labs(x = "", y = "Temp (C)")
+
+plot
 ```
 
 
