@@ -23,29 +23,34 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(ggridges)
+library(lubridate)
 ```
 
 ```{r}
 #read in all the csv files
 files <- list.files(path = "Temp data 7_9_19 raw/")
+#t <- minutes(10)
 
 for (i in 1:length(files)) {
-  if(i == 1){ 
     data <- read.csv(paste0("Temp data 7_9_19 raw/",
                             files[i]), 
                      skip = 19, 
-                     header = T, 
-                     sep = ",")}
-  if(i > 1){
-    temporary <- read.csv(paste0("Temp data 7_9_19 raw/", 
-                                 files[i]),
-                          skip = 20,
-                          header = F,
-                          sep = ",")
-  }
-  data <- rbind(data, temporary)
+                     header = T, sep = ",")
+    data$fdates <- mdy_hms(data$Date.Time)
+    data$sensor <- files[i]
+  
+  if(i == 1)alldat <- data                 
+  if(i > 1)alldat <- rbind(alldat, data)
+  #row.names(datasetname) <- 1:nrow(datasetname)
+  #alldat$fdates <- mdy_hms(alldat$Date.Time)
+  #alldat$rdates <- round_date()
+  
 }
+
 ```
+
+Problems:
+  when i call up the row by number, it gives me multiple instances of it
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
