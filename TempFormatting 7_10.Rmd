@@ -29,6 +29,10 @@ library(lubridate)
 ```{r}
 #read in all the csv files
 files <- list.files(path = "Temp data 7_9_19 raw/")
+sites <- read.csv("site_temps_7_11.csv", header = T, sep = ",")
+    sites$f.col.time <- mdy_hm(sites$collection.time)
+    sites$f.dep.time <- mdy_hm(sites$deploy.time)
+
 #t <- minutes(10)
 #list of site locs in order by sensor numbers?
 
@@ -58,8 +62,35 @@ for (i in 1:length(files)) {
 
 ```
 
+```{r}
+#formatting data to remove undeployed sensors
+data.sensors <- unique(alldat$sensor)
+sites.sensors <- unique(sites$sensor)
+diff <- setdiff(data.sensors, sites.sensors)
+alldat <- filter(alldat, sensor %in% sites$sensor)
+#not sure if it worked
+
+#add site location column
+alldat <- mutate(alldat, loc = 2)
+alldat <- mutate(alldat, loc = sites$site[sites$sensor == alldat$sensor])
+
+alldat$sensor <- as.numeric(alldat$sensor)
+alldat2 <- inner_join(alldat, sites, by = "sensor")
+
+```
+
 Problems:
   when i call up the row by number, it gives me multiple instances of it
+  
+```{r}
+#plotting time!
+all.temps <- ggplot()+
+  geom_boxplot(alldat, 
+                      mapping = aes(y = Value, x = sensor))+  theme_classic()+
+  xlab("Temp (C)")
+all.temps
+```
+
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
