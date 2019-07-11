@@ -30,14 +30,23 @@ library(lubridate)
 #read in all the csv files
 files <- list.files(path = "Temp data 7_9_19 raw/")
 #t <- minutes(10)
+#list of site locs in order by sensor numbers?
 
 for (i in 1:length(files)) {
     data <- read.csv(paste0("Temp data 7_9_19 raw/",
                             files[i]), 
                      skip = 19, 
                      header = T, sep = ",")
+    #formatting time
     data$fdates <- mdy_hms(data$Date.Time)
+    #making a column with sensor number
     data$sensor <- files[i]
+    data$sensor <- gsub("data","\\1", data$sensor)
+    data$sensor <- gsub(".csv","\\1", data$sensor)
+    #making column with site loc
+    #cbind(data, site = sites[i])
+    #round temperatures to nearest tenth
+    data$rnd.dates <- round_date(data$fdates, "10 minutes")
   
   if(i == 1)alldat <- data                 
   if(i > 1)alldat <- rbind(alldat, data)
