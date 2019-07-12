@@ -67,7 +67,7 @@ alldat <- filter(alldat, sensor %in% sites$sensor)
 #add site location column
 alldat$sensor <- as.numeric(alldat$sensor)
 #removed sensor 54- something wrong
-alldat2 <- filter(alldat, sensor != 54)
+#alldat2 <- filter(alldat, sensor != 54)
 #adding sites data sheet- matching sensors with sites
 alldat2 <- inner_join(alldat, sites, by = "sensor")
 #identify list of sites
@@ -97,7 +97,7 @@ heads.plot <- ggplot(data = heads)+
   theme_classic()
 heads.plot
 
-ulb.heads <- c("ULB2HA", "ULB3HA", "ULB4HA")
+ulb.heads <- c("ULB2HA","ULB2HB", "ULB3HB", "ULB3HA", "ULB4HA")
 ulb.head <- filter(master, site %in% ulb.heads)
 ulb.heads.plot <- ggplot(data = ulb.head)+
   geom_line(aes(x = rnd.dates, 
@@ -106,5 +106,45 @@ ulb.heads.plot <- ggplot(data = ulb.head)+
   theme_classic()
 ulb.heads.plot
 
+mul.heads <- c("MUL2HA","MUL2HB", "MUL4HA", "MUL4HB", "MUL7HA", "MUL7HB", "MULAir")
+mul.head <- filter(master, site %in% mul.heads)
+mul.heads.plot <- ggplot(data = mul.head)+
+  geom_line(aes(x = rnd.dates,
+                y = Value,
+                color = site))+
+  ylim(0, 20)+
+  theme_classic()
+mul.heads.plot
+
+rmo.heads <- c("RMO1HA", "RMO1HB", "RMO2HA", "RMO2HB", "RMO3HA", "RMO3HB")
+rmo.head <- filter(master, site %in% rmo.heads)
+rmo.heads.plot <- ggplot(data = rmo.head)+
+  geom_line(aes(x = rnd.dates,
+                y = Value,
+                color = site))+
+  theme_classic()
+rmo.heads.plot
+
+gg.heads <- c("W600A", "W600B", "GC300A", "GC300B", "LS180A", "LS180B")
+gg.head <- filter(master, site %in% gg.heads)
+gg.heads.plot <- ggplot(data = gg.head)+
+  geom_line(aes(x = rnd.dates,
+                y = Value,
+                color = site))+
+  ylim(10, 20)+
+  theme_classic()
+gg.heads.plot
+
+airs <- c("ULBAir", "GGAir", "MULAir", "RMOAir")
+air <- filter(master, site %in% airs)
+air.plot <- ggplot(data = air)+
+  geom_line(aes(x = rnd.dates,
+                y = Value,
+                color = site))+
+  ylim(0, 28)+
+  theme_classic()
+air.plot
+#air temp analysis
+air.diff <- 
 ```
 
