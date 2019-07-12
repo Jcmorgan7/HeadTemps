@@ -24,6 +24,8 @@ library(dplyr)
 library(ggplot2)
 library(ggridges)
 library(lubridate)
+#add ggsave to export stuff
+#library(ggsave)
 ```
 
 ```{r}
@@ -80,6 +82,7 @@ alldat3 <- filter(alldat2, rnd.dates >= start)
 alldat3 <- filter(alldat3, rnd.dates <= end)
 
 master <- select(alldat3, Value, sensor, rnd.dates, site)
+master$rnd.dates <- as.POSIXct(master$rnd.dates, format = "%Y-%M-%d %H:%M:%S")
 
 ```
 
@@ -93,7 +96,7 @@ heads.plot <- ggplot(data = heads)+
   geom_line(aes(x = rnd.dates, 
                 y = Value,
                 color = site))+
-  ylim(10, 15)+
+  #ylim(10, 15)+
   theme_classic()
 heads.plot
 
@@ -116,7 +119,7 @@ mul.heads.plot <- ggplot(data = mul.head)+
   theme_classic()
 mul.heads.plot
 
-rmo.heads <- c("RMO1HA", "RMO1HB", "RMO2HA", "RMO2HB", "RMO3HA", "RMO3HB")
+rmo.heads <- c("RMO1CA", "RMO1HB", "RMO2CA", "RMO2HB", "RMO3CA", "RMO3HB")
 rmo.head <- filter(master, site %in% rmo.heads)
 rmo.heads.plot <- ggplot(data = rmo.head)+
   geom_line(aes(x = rnd.dates,
@@ -145,6 +148,37 @@ air.plot <- ggplot(data = air)+
   theme_classic()
 air.plot
 #air temp analysis
+master.spread <- select(master, Value, rnd.dates, site)
+master.spread <- master.spread %>% spread(site, value = Value)
 air.diff <- 
+```
+
+```{r}
+#ULB
+#trying to figure out if my data is real
+ulb.2 <- c("ULB2HA", "ULB2HB", "ULB2CA", "ULB2CB")
+ulb.3 <- c("ULB3HA", "ULB3HB", "ULB3CA", "ULB3CB")
+ulb.4 <- c("ULB4HA", "ULB4CB", "ULB4CA") #removed HB
+#rmo
+rmo.1 <- c("RMO1HA", "RMO1HB", "RMO1CA", "RMO1CB")
+rmo.2 <- c("RMO2HA", "RMO2HB", "RMO2CA", "RMO2CB")
+rmo.3 <- c("RMO3HA", "RMO3HB", "RMO3CA", "RMO3CB")
+#mul
+mul.2 <- c("MUL2HA", "MUL2HB", "MUL2CA", "MUL2CB")
+mul.4 <- c("MUL4HB", "MUL4CA") #removed HA, CB missing
+mul.7 <- c("MUL7HB", "MUL7CA", "MUL7CB") #removed HA, weird spike and like downstream- bc of how it goes subsurface bewteen sites I think
+#gg
+gg.1 <- c("W600A", "W600B", "W400A", "W400B") #removed W600A, super shallow/in sun, weird spike
+gg.2 <- c("GC300B", "GC100A", "GC100B") #GC300A is missing, spike in 300B but is visible downstream
+gg.3 <- c("LS180B", "LS0A", "LS0B")
+
+cal <- filter(master, site %in% gg.3)
+c.plot <- ggplot(data = cal)+
+  geom_line(aes(x = rnd.dates,
+                y = Value,
+                color = site))+
+  #ylim(12, 19)+
+  theme_classic()
+c.plot
 ```
 

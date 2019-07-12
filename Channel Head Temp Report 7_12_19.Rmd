@@ -1,0 +1,20 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+The stream temperature sensors were all collected the other day after being deployed for 25 days, and I've been playing around with the data. The sensors collected the temp every 10 minutes. 2 sensors were deployed at the channel head and ~200 m downstream. Additionally, an air temp was recorded at the head of one of the channels in each watershed.
+
+Data time period
+Start date: 6-13-19 13:10
+End date: 7-8-19 11:20
+
+Things I want to show:
+  -maps of sheds for reference
+  -General temp time series
+  -Distribution of temps (ridge plots)
+  -Diff between heads and downstream
+  -temps normalized by air temp
+
+Removed Data
+  LS180B: 3763, 3764, 
