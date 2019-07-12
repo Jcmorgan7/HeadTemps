@@ -17,4 +17,5 @@ Things I want to show:
   -temps normalized by air temp
 
 Removed Data
-  LS180B: 3763, 3764, 
+  LS180B: 3763, 3764
+  Considering removing all of LS180

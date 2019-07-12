@@ -24,6 +24,7 @@ library(dplyr)
 library(ggplot2)
 library(ggridges)
 library(lubridate)
+library(SAVER)
 #add ggsave to export stuff
 #library(ggsave)
 ```
@@ -109,7 +110,7 @@ ulb.heads.plot <- ggplot(data = ulb.head)+
   theme_classic()
 ulb.heads.plot
 
-mul.heads <- c("MUL2HA","MUL2HB", "MUL4HA", "MUL4HB", "MUL7HA", "MUL7HB", "MULAir")
+mul.heads <- c("MUL2HA","MUL2HB", "MUL4HB", "MUL7HB", "MULAir")
 mul.head <- filter(master, site %in% mul.heads)
 mul.heads.plot <- ggplot(data = mul.head)+
   geom_line(aes(x = rnd.dates,
@@ -147,10 +148,7 @@ air.plot <- ggplot(data = air)+
   ylim(0, 28)+
   theme_classic()
 air.plot
-#air temp analysis
-master.spread <- select(master, Value, rnd.dates, site)
-master.spread <- master.spread %>% spread(site, value = Value)
-air.diff <- 
+
 ```
 
 ```{r}
@@ -180,5 +178,72 @@ c.plot <- ggplot(data = cal)+
   #ylim(12, 19)+
   theme_classic()
 c.plot
+```
+
+Ridge plots- show distribution
+JP was thinking I should make them with both the channel head and downstream sites together and color coded by elevation- we shall see
+```{r}
+cal <- filter(master, site %in% mul.heads)
+rigged <- ggplot()+
+  geom_density_ridges2(cal, 
+                      mapping = aes(x = Value,
+                                    y=site,
+                                    scale=1,
+                                    fill = site))+
+  #scale_x_continuous(limits=c(8,12))+
+  theme_classic()+
+  scale_fill_brewer(palette = "Dark2")+
+  theme(axis.title.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        strip.text.y = element_text(angle = 180, hjust = 1),
+        line = element_blank())+
+  scale_x_continuous( expand = c(0.01, 0)) +
+  scale_y_discrete(expand = c(0.001, 0))+
+  xlab("Temp (C)")
+rigged
+```
+
+Spreading the data in order to do some math between heads and downstream sites
+```{r}
+master.spread <- select(master, Value, rnd.dates, site)
+master.spread <- master.spread %>% spread(site, value = Value)
+#all diffs
+#channel t - head t
+attach(master.spread)
+master.diffs <- data.frame("time" = rnd.dates,
+                           "ULB2"= ULB2CA - ULB2HA,
+                           "ULB3"= ULB3CA - ULB3HA,
+                           "ULB4"= ULB4CA - ULB4HA,
+                           "RMO1" = RMO1CA - RMO1HA,
+                           "RMO2" = RMO2CA - RMO2HA,
+                           "RMO3" = RMO3CA - RMO3HB,
+                           "MUL2" = MUL2CA - MUL2HA,
+                           "MUL4" = MUL4CA - MUL4HB,
+                           "MUL7" = MUL7CA - MUL7HB,
+                           "W" = W400A - W600A,
+                           "GC" = GC100A - GC300B,
+                           "LS" = LS0B - LS180B)
+detach(master.spread)
+
+#gathering data into tall boy
+tall.diffs <- master.diffs %>% gather(site, temp, -time)
+
+all.diffs.plot <- ggplot()+
+  geom_density_ridges2(tall.diffs, 
+                      mapping = aes(x = temp,
+                                    y=site,
+                                    scale=1,
+                                    ))+
+  #scale_x_continuous(limits=c(8,12))+
+  theme_classic()+
+  scale_fill_brewer(palette = "Dark2")+
+  theme(axis.title.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        strip.text.y = element_text(angle = 180, hjust = 1),
+        line = element_blank())+
+  scale_x_continuous( expand = c(0.01, 0)) +
+  scale_y_discrete(expand = c(0.001, 0))+
+  xlab("Temp (C)")
+all.diffs.plot
 ```
 
