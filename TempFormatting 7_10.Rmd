@@ -83,6 +83,11 @@ alldat3 <- filter(alldat2, rnd.dates >= start)
 alldat3 <- filter(alldat3, rnd.dates <= end)
 
 master <- select(alldat3, Value, sensor, rnd.dates, site)
+#replacing wacky temps with NA
+which(master$Value == -41, arr.ind = T)
+master$Value[74005] <- NA
+master$Value[which(master$Value > 35, arr.ind = T)] <- NA
+
 master$rnd.dates <- as.POSIXct(master$rnd.dates, format = "%Y-%M-%d %H:%M:%S")
 
 ```
@@ -91,9 +96,9 @@ Before I can plot, I have to subset the data in ways that I want it all plotted
 ```{r}
 #plotting time!
 #heads
-sites.heads <- c("ULB2HA", "ULB3HA", "ULB4HA", "W600A", "GC300A", "LS180A", "MUL2HA", "MUL4HA", "MUL7HA", "RMO1HA", "RMO2HA", "RMO3HA")
+sites.heads <- c("ULB2HA", "ULB3HA", "ULB4HA", "W600A", "GC300A", "LS180A", "MUL2HA", "MUL7HA", "RMO1HA", "RMO2HA", "RMO3HA")
 head <- filter(master, site %in% sites.heads)
-heads.plot <- ggplot(data = heads)+
+heads.plot <- ggplot(data = head)+
   geom_line(aes(x = rnd.dates, 
                 y = Value,
                 color = site))+
@@ -245,5 +250,64 @@ all.diffs.plot <- ggplot()+
   scale_y_discrete(expand = c(0.001, 0))+
   xlab("Temp (C)")
 all.diffs.plot
+```
+  
+Plots of diff vs air
+```{r}
+attach(master.spread)
+ulb.diffs <- data.frame("ULB2"= ULB2CA - ULB2HA,
+                           "ULB3"= ULB3CA - ULB3HA,
+                           "ULB4"= ULB4CA - ULB4HA,
+                            "ULBAir" = ULBAir)
+rmo.diffs <- data.frame(
+                           "RMO1" = RMO1CA - RMO1HA,
+                           "RMO2" = RMO2CA - RMO2HA,
+                           "RMO3" = RMO3CA - RMO3HB,
+                           "RMOAir" = RMOAir
+                           )
+mul.diffs <- data.frame(
+                           "MUL2" = MUL2CA - MUL2HA,
+                           "MUL4" = MUL4CA - MUL4HB,
+                           "MUL7" = MUL7CA - MUL7HB,
+                           "MULAir" = MULAir)
+gg.diffs <- data.frame(
+                           "GGAir" = GGAir,
+                           "W" = W400A - W600A,
+                           "GC" = GC100A - GC300B,
+                           "LS" = LS0B - LS180B)
+elev.diff <- data.frame()
+detach(master.spread)
+
+#make em tall- wtih ULBAir as the spreader
+ulb.tall.diffs <- ulb.diffs %>% gather(site, temp, -ULBAir)
+ulb.diff.plot <- ggplot(data = ulb.tall.diffs)+
+  geom_point(aes(x = ULBAir,
+                y = temp,
+                color = site))+
+  theme_classic()
+ulb.diff.plot
+#rmo
+rmo.tall.diffs <- rmo.diffs %>% gather(site, temp, -RMOAir)
+rmo.diff.plot <- ggplot(data = rmo.tall.diffs)+
+  geom_point(aes(x = RMOAir,
+                y = temp,
+                color = site))+
+  theme_classic()
+rmo.diff.plot
+#mul
+mul.tall.diffs <- mul.diffs %>% gather(site, temp, -MULAir)
+mul.diff.plot <- ggplot(data = mul.tall.diffs)+
+  geom_point(aes(x = MULAir,
+                y = temp,
+                color = site))+
+  theme_classic()
+mul.diff.plot
+#gg
+gg.tall.diffs <- gg.diffs %>% gather(site, temp, -GGAir)
+gg.diff.plot <- ggplot(data = gg.tall.diffs, aes(x = GGAir,
+                y = temp))+
+  geom_point(mapping = aes(color = site))+
+  theme_classic()
+gg.diff.plot
 ```
 
