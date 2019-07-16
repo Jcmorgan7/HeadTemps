@@ -282,40 +282,67 @@ detach(master.spread)
 
 #make em tall- wtih ULBAir as the spreader
 ulb.tall.diffs <- ulb.diffs %>% gather(site, temp, -ULBAir)
-ulb.diff.plot <- ggplot(data = ulb.tall.diffs)+
-  geom_point(aes(x = ULBAir,
-                y = temp,
-                color = site))+
-  theme_classic()
-ulb.diff.plot
-#rmo
-rmo.tall.diffs <- rmo.diffs %>% gather(site, temp, -RMOAir)
-rmo.diff.plot <- ggplot(data = rmo.tall.diffs)+
-  geom_point(aes(x = RMOAir,
-                y = temp,
-                color = site))+
-  theme_classic()
-rmo.diff.plot
-#mul
-mul.tall.diffs <- mul.diffs %>% gather(site, temp, -MULAir)
-mul.diff.plot <- ggplot(data = mul.tall.diffs)+
-  geom_point(aes(x = MULAir,
-                y = temp,
-                color = site))+
-  theme_classic()
-mul.diff.plot
-#gg
 gg.tall.diffs <- gg.diffs %>% gather(site, temp, -GGAir)
+rmo.tall.diffs <- rmo.diffs %>% gather(site, temp, -RMOAir)
+mul.tall.diffs <- mul.diffs %>% gather(site, temp, -MULAir)
 
 gg.diff.plot <- ggplot(data = gg.tall.diffs, 
                        aes(x = GGAir,
                            y = temp,
                            color = site))+
-  #geom_point()+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
   stat_density2d(size = 2)+
-  #stat_smooth(aes(alpha = 1))+
-  theme_classic()
+  ylab("Downstream Temp - Head Temp (C)")+
+  xlab("Air Temperature (C)")+
+  theme_classic()+
+  theme(text= element_text(size=17))
 gg.diff.plot
+#ulb
+ulb.diff.plot <- ggplot(data = ulb.tall.diffs, 
+                       aes(x = ULBAir,
+                           y = temp,
+                           color = site))+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  stat_density2d(size = 2)+
+  ylab("Downstream Temp - Head Temp (C)")+
+  xlab("Air Temperature (C)")+
+  theme_classic()+
+  theme(text= element_text(size=17))
+ulb.diff.plot
+#rmo
+rmo.diff.plot <- ggplot(data = rmo.tall.diffs, 
+                       aes(x = RMOAir,
+                           y = temp,
+                           color = site))+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  stat_density2d(size = 2)+
+  ylab("Downstream Temp - Head Temp (C)")+
+  xlab("Air Temperature (C)")+
+  theme_classic()+
+  theme(text= element_text(size=17))
+rmo.diff.plot
+#mul
+mul.diff.plot <- ggplot(data = mul.tall.diffs, 
+                       aes(x = MULAir,
+                           y = temp,
+                           color = site))+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  stat_density2d(size = 2)+
+  ylab("Downstream Temp - Head Temp (C)")+
+  xlab("Air Temperature (C)")+
+  theme_classic()+
+  theme(text= element_text(size=17))
+mul.diff.plot
+
+ggsave("ulb.dif.png", plot = ulb.diff.plot, width = 7, height = 5, units = c("in"))
+ggsave("mul.diff.png", plot = mul.diff.plot, width = 7, height = 5, units = c("in"))
+ggsave("rmo.diff.png", plot = rmo.diff.plot, width = 7, height = 5, units = c("in"))
+ggsave("gg.diff.png", plot = gg.diff.plot, width = 7, height = 5, units = c("in"))
+
 ```
   
 7-15-19
@@ -338,11 +365,13 @@ Ridge plots with head and C
 #ULB
 ulb.r <- c("ULB2HA", "ULB2CB","ULB3HA", "ULB3CB", "ULB4HA", "ULB4CA")
 #rmo
-rmo.r <- c("RMO1HA", "RMO1CB", "RMO2HA", "RMO2CB", "RMO3HA", "RMO3CB")
+rmo.r <- c("RMO1HA", "RMO1CB", "RMO2HA", "RMO2CB", "RMO3HB", "RMO3CB")
 #mul
 mul.r <- c("MUL2HA", "MUL2CB", "MUL4HB", "MUL4CA", "MUL7HB", "MUL7CA") 
 #gg
 gg.r <- c("W600B", "W400A", "GC300B","GC100B", "LS180B", "LS0B")
+#labels
+labelz <- c("Head", "Downstream", "Head", "Downstream", "Head", "Downstream") 
 #subset master dataset
 ulb.r <- filter(master, site %in% ulb.r)
 rmo.r <- filter(master, site %in% rmo.r)
@@ -423,10 +452,16 @@ gg.ridge <- ggplot()+
         axis.text.x = element_text(size = 17),
         axis.text.y = element_text(size = 17))+
   scale_x_continuous( expand = c(0.01, 0)) +
-  scale_y_discrete(expand = c(0.001, 0))+
+  scale_y_discrete(expand = c(0.001, 0), 
+                   labels =c("W600" = "Head (W)",
+                             "W400"="Downstream (W)",
+                             "LS180"="Head (LS)",
+                             "LS0"="Downstream (LS)",
+                             "GC300"="Head (GC)",
+                             ))+
   xlab("Temp (C)")
 gg.ridge
-ggsave("gg.ridge.png", plot = last_plot())
+ggsave("rmo.ridge.png", plot = last_plot())
 ```
   
 General timeseries- Not working, gave up
@@ -573,7 +608,7 @@ timeseries <- filter(master, rnd.dates <= end)
 
 all.ts <- c("ULB2HA","ULB3HA", "ULB4HA", "RMO1HA", "RMO2HA", "RMO3HA", "MUL2HA",  "MUL4HB",  "MUL7HB", "W600B", "GC300B", "LS180B","ULB2CB", "ULB3CB", "ULB4CA", "RMO1CB",  "RMO2CB",  "RMO3CB", "MUL2CB", "MUL4CA",  "MUL7CA", "W400A", "GC100B",  "LS0B", "MULAir", "GGAir", "RMOAir", "ULBAir")
 
-timeseries <- master %>% filter(site %in% all.ts)
+timeseries <- timeseries %>% filter(site %in% all.ts)
 timeseries$site <- gsub('.{1}$', '', timeseries$site)
 timeseries$site <- gsub('.{1}$', '', timeseries$site)
 
@@ -582,6 +617,27 @@ mul.ts <- timeseries %>% filter(shed == "MUL" & type != "air")
 rmo.ts <- timeseries %>% filter(shed == "RMO" & type != "air")
 gg.ts <- timeseries %>% filter(shed == "GG" & type != "air")
 #ulb
+rmo.ts.plot <- ggplot(data = rmo.ts)+
+  geom_line(aes(x = rnd.dates,
+                y = Value,
+                
+                color = site,
+                linetype = type), 
+            size = 1.5)+
+  scale_linetype_manual(labels = c("Head", "Downstream"),
+                        values=c("solid", "dotted"),
+                        name = "Location")+
+   scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  xlab( " ")+
+  ylab("Temperature (C)")+
+  ylim(9, 19)+
+  theme_classic()+
+  theme(text= element_text(size=17),
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))
+rmo.ts.plot
+#rmo
 ulb.ts.plot <- ggplot(data = ulb.ts)+
   geom_line(aes(x = rnd.dates,
                 y = Value,
@@ -599,28 +655,10 @@ ulb.ts.plot <- ggplot(data = ulb.ts)+
   theme_classic()+
   theme(text= element_text(size=17),
         axis.text.x = element_text(size = 17),
-        axis.text.y = element_text(size = 17))
-ulb.ts.plot
-#rmo
-rmo.ts.plot <- ggplot(data = rmo.ts)+
-  geom_line(aes(x = rnd.dates,
-                y = Value,
-                color = site,
-                linetype = type), 
-            size = 1.5)+
-  scale_color_brewer(palette = "Dark2",
-                     name = "Stream")+
-  scale_linetype_manual(values=c("solid", "dotted"),
-                        name = "Location",
-                        labels = c("Head", "Downstream"))+
-  xlab( " ")+
-  ylab("Temperature (C)")+
-  ylim(9, 19)+
-  theme_classic()+
-  theme(text= element_text(size=17),
-        axis.text.x = element_text(size = 17),
-        axis.text.y = element_text(size = 17))
-rmo.ts.plot
+        axis.text.y = element_text(size = 17))+
+  guides(color = guide_legend(order = 1), 
+              linetype = guide_legend(order = 2))
+ulb.ts.plot 
 #mul
 mul.ts.plot <- ggplot(data = mul.ts)+
   geom_line(aes(x = rnd.dates,
@@ -642,17 +680,17 @@ mul.ts.plot <- ggplot(data = mul.ts)+
         axis.text.y = element_text(size = 17))
 mul.ts.plot
 #gg
-gg.sites <- c("Glacier", "Glacier", "Glacier", "Landslide", "Landslide", "Landslide", "Wind", "Wind", "Wind")
+gg.names <- data.frame("names" =c("Wind","Glacier", "Glacier","Landslide","Wind","Landslide"), 
+                       "site" = c("W40","GC10","GC30","LS18","W60","LS"))
+gg.ts <- gg.ts %>% inner_join(gg.names, by = "site")
 
-gg.ts.plot <- ggplot(data = gg.ts)+
-  geom_line(aes(x = rnd.dates,
+gg.ts.plot <- ggplot(data = gg.ts, aes(x = rnd.dates,
                 y = Value,
-                color = site,
-                linetype = type), 
-            size = 1.5)+
+                color = names,
+                linetype = type))+
+  geom_line(size = 1.5)+
   scale_color_brewer(palette = "Dark2",
-                     name = "Stream",
-                     labels = gg.sites)+
+                     name = "Stream")+
   scale_linetype_manual(values=c("solid", "dotted"),
                         name = "Location",
                         labels = c("Head", "Downstream"))+
@@ -668,10 +706,10 @@ gg.ts.plot
 
 
 
-ggsave("ulb.ts.png", plot = ulb.ts.plot, width = 7, height = 5, units = c("in"))
-ggsave("mul.ts.png", plot = mul.ts.plot, width = 7, height = 5, units = c("in"))
-ggsave("rmo.ts.png", plot = rmo.ts.plot, width = 7, height = 5, units = c("in"))
-ggsave("gg.ts.png", plot = gg.ts.plot, width = 7, height = 5, units = c("in"))
+ggsave("ulb.ts.png", plot = ulb.ts.plot, width = 8, height = 5, units = c("in"))
+ggsave("mul.ts.png", plot = mul.ts.plot, width = 8, height = 5, units = c("in"))
+ggsave("rmo.ts.png", plot = rmo.ts.plot, width = 8, height = 5, units = c("in"))
+ggsave("gg.ts.png", plot = gg.ts.plot, width = 8, height = 5, units = c("in"))
 
 ```
 
