@@ -293,6 +293,8 @@ gg.diff.plot <- ggplot(data = gg.tall.diffs,
   scale_color_brewer(palette = "Dark2",
                      name = "Stream")+
   stat_density2d(size = 2)+
+   xlim(10, 28)+
+  ylim(0,5)+
   ylab("Downstream Temp - Head Temp (C)")+
   xlab("Air Temperature (C)")+
   theme_classic()+
@@ -306,6 +308,8 @@ ulb.diff.plot <- ggplot(data = ulb.tall.diffs,
   scale_color_brewer(palette = "Dark2",
                      name = "Stream")+
   stat_density2d(size = 2)+
+  xlim(10, 28)+
+   ylim(0,5)+
   ylab("Downstream Temp - Head Temp (C)")+
   xlab("Air Temperature (C)")+
   theme_classic()+
@@ -319,6 +323,8 @@ rmo.diff.plot <- ggplot(data = rmo.tall.diffs,
   scale_color_brewer(palette = "Dark2",
                      name = "Stream")+
   stat_density2d(size = 2)+
+   xlim(10, 28)+
+   ylim(0,5)+
   ylab("Downstream Temp - Head Temp (C)")+
   xlab("Air Temperature (C)")+
   theme_classic()+
@@ -332,16 +338,18 @@ mul.diff.plot <- ggplot(data = mul.tall.diffs,
   scale_color_brewer(palette = "Dark2",
                      name = "Stream")+
   stat_density2d(size = 2)+
+   xlim(10, 28)+
+   ylim(0,5)+
   ylab("Downstream Temp - Head Temp (C)")+
   xlab("Air Temperature (C)")+
   theme_classic()+
   theme(text= element_text(size=17))
 mul.diff.plot
 
-ggsave("ulb.dif.png", plot = ulb.diff.plot, width = 7, height = 5, units = c("in"))
-ggsave("mul.diff.png", plot = mul.diff.plot, width = 7, height = 5, units = c("in"))
-ggsave("rmo.diff.png", plot = rmo.diff.plot, width = 7, height = 5, units = c("in"))
-ggsave("gg.diff.png", plot = gg.diff.plot, width = 7, height = 5, units = c("in"))
+ggsave("ulb.dif.png", plot = ulb.diff.plot, width = 7.5, height = 5, units = c("in"))
+ggsave("mul.diff.png", plot = mul.diff.plot, width = 7.5, height = 5, units = c("in"))
+ggsave("rmo.diff.png", plot = rmo.diff.plot, width = 7.5, height = 5, units = c("in"))
+ggsave("gg.diff.png", plot = gg.diff.plot, width = 7.5, height = 5, units = c("in"))
 
 ```
   
@@ -382,6 +390,16 @@ ulb.r$site <- gsub('.{1}$', '', ulb.r$site)
 rmo.r$site <- gsub('.{1}$', '', rmo.r$site)
 mul.r$site <- gsub('.{1}$', '', mul.r$site)
 gg.r$site <- gsub('.{1}$', '', gg.r$site)
+#adding fudged numbers to fix the x limits
+ulb.r$Value[100] <- 9
+ulb.r$Value[200] <- 19
+rmo.r$Value[100] <- 9
+rmo.r$Value[200] <- 19
+mul.r$Value[100] <- 9
+mul.r$Value[200] <- 19
+gg.r$Value[100] <- 9
+gg.r$Value[200] <- 19
+rmo.r$Value[which(rmo.r$Value > 19, arr.ind = T)] <- 19
 #make ridge plots
 #ulb
 ulb.ridge <- ggplot()+
@@ -458,10 +476,14 @@ gg.ridge <- ggplot()+
                              "LS180"="Head (LS)",
                              "LS0"="Downstream (LS)",
                              "GC300"="Head (GC)",
-                             ))+
+                             "GC100"="Downstream (GC)"))+
   xlab("Temp (C)")
 gg.ridge
-ggsave("rmo.ridge.png", plot = last_plot())
+ggsave("gg.ridge.png", plot = gg.ridge, width = 7.5, height = 7, units = c("in"))
+ggsave("mul.ridge.png", plot = mul.ridge, width = 7.5, height = 7, units = c("in"))
+ggsave("rmo.ridge.png", plot = rmo.ridge, width = 7.5, height = 7, units = c("in"))
+ggsave("ulb.ridge.png", plot = ulb.ridge, width = 7.5, height = 7, units = c("in"))
+
 ```
   
 General timeseries- Not working, gave up
