@@ -456,4 +456,53 @@ head.plot <- ggplot(data = head.r)+
   theme_classic()
 head.plot
 ```
+  
+-Head vs airT
+  -mean airT vs mean waterT
+  -mean airT vs mean diff or diff vs airT
+```{r}
+#means
+master.mean <- master %>% group_by(site) %>% summarise_all(funs(mean), na.rm = TRUE)
+#write.csv(master.mean, file = "temps.means.csv")
+#made dataframe with means and air mean
+master.mean <- read.csv("temps.means.csv")
+master.mean$site <- gsub('.{1}$', '', master.mean$site)
+
+#dont think this is necessary?
+mean.r <- c("ULB2HA","ULB3HA", "ULB4HA", "RMO1HA", "RMO2HA", "RMO3HA", "MUL2HA",  "MUL4HB",  "MUL7HB", "W600B", "GC300B", "LS180B","ULB2CB", "ULB3CB", "ULB4CA", "RMO1CB",  "RMO2CB",  "RMO3CB", "MUL2CB", "MUL4CA",  "MUL7CA", "W400A", "GC100B",  "LS0B", "MULAir", "GGAir", "RMOAir", "ULBAir")
+
+head.mean.plot <- ggplot(data = master.mean)+
+  geom_point(aes(x = airmean,
+                y = wtmean,
+                color = loc,
+                shape = type))+
+  theme(axis.title.x=element_text(size = 17),
+        axis.title.y=element_text(size = 17),
+       axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))+
+  theme_classic()
+head.mean.plot
+ggsave("mean.plot.png", plot = last_plot())
+
+ulb.head <- c("ULB2HA","ULB3HA", "ULB4HA", "ULBAir") 
+rmo.head <- c("RMO1HA", "RMO2HA", "RMO3HA", "RMOAir") 
+mul.head <- c("MUL2HA",  "MUL4HB",  "MUL7HB", "MULAir") 
+gg.head <- c("W600B", "GC300B", "LS180B", "GGAir")
+
+ulb.head <- filter(master, site %in% ulb.head) 
+rmo.head <- filter(master, site %in% rmo.head)
+mul.head <- filter(master, site %in% mul.head) 
+gg.head <- filter(master, site %in% gg.head)
+
+ulb.head <- ulb.head %>% select(Value, site)
+rmo.head <- rmo.head %>% select(Value, site)
+mul.head <- mul.head %>% select(Value, site)
+gg.head <- gg.head %>% select(Value, site)
+
+
+
+
+ulb.tall.diffs <- ulb.diffs %>% gather(site, temp, -ULBAir)
+
+```
 
