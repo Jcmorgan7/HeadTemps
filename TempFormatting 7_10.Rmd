@@ -31,6 +31,7 @@ library(SAVER)
 
 ```{r}
 #read in all the csv files
+#removed 15- ULB4HB- super messed up, sensor was broken
 files <- list.files(path = "Temp data 7_9_19 raw/")
 sites <- read.csv("site_temps_7_11.csv", header = T, sep = ",")
     sites$f.col.time <- mdy_hm(sites$collection.time)
@@ -87,7 +88,8 @@ master <- select(alldat3, Value, sensor, rnd.dates, site)
 which(master$Value == -41, arr.ind = T)
 master$Value[74005] <- NA
 master$Value[which(master$Value > 35, arr.ind = T)] <- NA
-
+#setting everything below 0 = NA, it didn't get below 0
+master$Value[which(master$Value < 0, arr.ind = T)] <- NA
 master$rnd.dates <- as.POSIXct(master$rnd.dates, format = "%Y-%M-%d %H:%M:%S")
 
 ```
@@ -188,7 +190,7 @@ c.plot
 Ridge plots- show distribution
 JP was thinking I should make them with both the channel head and downstream sites together and color coded by elevation- we shall see
 ```{r}
-cal <- filter(master, site %in% mul.heads)
+cal <- filter(master)
 rigged <- ggplot()+
   geom_density_ridges2(cal, 
                       mapping = aes(x = Value,
@@ -309,5 +311,65 @@ gg.diff.plot <- ggplot(data = gg.tall.diffs, aes(x = GGAir,
   geom_point(mapping = aes(color = site))+
   theme_classic()
 gg.diff.plot
+```
+  
+7-15-19
+Final Plots that are going on the SURP poster
+  Goals: Convey general temperature trends:
+    -that the channel heads have almost constant temperatures
+    -that stream water is cooler in high elevations
+    -explore the relationship between mean annual air temperature and groundwater temperature
+    - explore how water warms at different elevations and distances
+
+Plots I will make:
+  -ridge plots with head and c
+  -general timeseries
+  -Head vs airT
+  -mean airT vs mean waterT
+  -mean airT vs mean diff or diff vs airT
+  
+Ridge plots with head and C
+```{r}
+#ULB
+ulb.c <- c("ULB2HA", "ULB2CB","ULB3HA", "ULB3CB", "ULB4HA", "ULB4CA")
+#rmo
+rmo.r <- c("RMO1HA", "RMO1CB", "RMO2HA", "RMO2CB", "RMO3HA", "RMO3CB")
+#mul
+mul.r <- c("MUL2HA", "MUL2CB", "MUL4HB", "MUL4CA", "MUL7HB", "MUL7CA") 
+#gg
+gg.r <- c("W600B", "W400A", "GC300B","GC100B", "LS180B", "LS0B")
+#subset master dataset
+ulb.r <- filter(master, site %in% ulb.c)
+rmo.r <- filter(master, site %in% rmo.r)
+mul.r <- filter(master, site %in% mul.r)
+gg.r <- filter(master, site %in% gg.r)
+#change variable names to remove A/B
+ulb.r$site <- gsub('.{1}$', '', ulb.r$site)
+rmo.r$site <- gsub('.{1}$', '', rmo.r$site)
+mul.r$site <- gsub('.{1}$', '', mul.r$site)
+gg.r$site <- gsub('.{1}$', '', gg.r$site)
+#make ridge plots
+
+ulb.ridge <- ggplot()+
+  geom_density_ridges2(ulb.r,fill = c('midnightblue'),
+                      mapping = aes(x = Value,
+                                    y=site,
+                                    scale=1
+                                    ))+
+  #scale_x_continuous(limits=c(8,12))+
+  #scale_fill_manual("midnightblue")+
+  theme_classic()+
+  theme(axis.title.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        strip.text.y = element_text(angle = 180, hjust = 1),
+        line = element_blank(),
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 10))+
+  scale_x_continuous( expand = c(0.01, 0)) +
+  scale_y_discrete(expand = c(0.001, 0))+
+  xlab("Temp (C)")
+ulb.ridge
+
+ggsave("ulb.ridge2.png", plot = last_plot())
 ```
 
