@@ -331,7 +331,7 @@ Plots I will make:
 Ridge plots with head and C
 ```{r}
 #ULB
-ulb.c <- c("ULB2HA", "ULB2CB","ULB3HA", "ULB3CB", "ULB4HA", "ULB4CA")
+ulb.r <- c("ULB2HA", "ULB2CB","ULB3HA", "ULB3CB", "ULB4HA", "ULB4CA")
 #rmo
 rmo.r <- c("RMO1HA", "RMO1CB", "RMO2HA", "RMO2CB", "RMO3HA", "RMO3CB")
 #mul
@@ -339,7 +339,7 @@ mul.r <- c("MUL2HA", "MUL2CB", "MUL4HB", "MUL4CA", "MUL7HB", "MUL7CA")
 #gg
 gg.r <- c("W600B", "W400A", "GC300B","GC100B", "LS180B", "LS0B")
 #subset master dataset
-ulb.r <- filter(master, site %in% ulb.c)
+ulb.r <- filter(master, site %in% ulb.r)
 rmo.r <- filter(master, site %in% rmo.r)
 mul.r <- filter(master, site %in% mul.r)
 gg.r <- filter(master, site %in% gg.r)
@@ -349,27 +349,111 @@ rmo.r$site <- gsub('.{1}$', '', rmo.r$site)
 mul.r$site <- gsub('.{1}$', '', mul.r$site)
 gg.r$site <- gsub('.{1}$', '', gg.r$site)
 #make ridge plots
-
+#ulb
 ulb.ridge <- ggplot()+
   geom_density_ridges2(ulb.r,fill = c('midnightblue'),
                       mapping = aes(x = Value,
                                     y=site,
-                                    scale=1
-                                    ))+
-  #scale_x_continuous(limits=c(8,12))+
-  #scale_fill_manual("midnightblue")+
+                                    scale=1))+
   theme_classic()+
   theme(axis.title.y=element_blank(),
+        axis.title.x=element_text(size = 17),
         axis.ticks.y=element_blank(),
         strip.text.y = element_text(angle = 180, hjust = 1),
         line = element_blank(),
-        axis.text.x = element_text(size = 10),
-        axis.text.y = element_text(size = 10))+
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))+
   scale_x_continuous( expand = c(0.01, 0)) +
   scale_y_discrete(expand = c(0.001, 0))+
   xlab("Temp (C)")
 ulb.ridge
-
-ggsave("ulb.ridge2.png", plot = last_plot())
+#rmo
+rmo.ridge <- ggplot()+
+  geom_density_ridges2(rmo.r,fill = c('sienna1'),
+                      mapping = aes(x = Value,
+                                    y=site,
+                                    scale=1))+
+  theme_classic()+
+  theme(axis.title.y=element_blank(),
+        axis.title.x=element_text(size = 17),
+        axis.ticks.y=element_blank(),
+        strip.text.y = element_text(angle = 180, hjust = 1),
+        line = element_blank(),
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))+
+  scale_x_continuous( expand = c(0.01, 0)) +
+  scale_y_discrete(expand = c(0.001, 0))+
+  xlab("Temp (C)")
+rmo.ridge
+#mul
+mul.ridge <- ggplot()+
+  geom_density_ridges2(mul.r,fill = c('turquoise'),
+                      mapping = aes(x = Value,
+                                    y=site,
+                                    scale=1))+
+  theme_classic()+
+  theme(axis.title.y=element_blank(),
+        axis.title.x=element_text(size = 17),
+        axis.ticks.y=element_blank(),
+        strip.text.y = element_text(angle = 180, hjust = 1),
+        line = element_blank(),
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))+
+  scale_x_continuous( expand = c(0.01, 0)) +
+  scale_y_discrete(expand = c(0.001, 0))+
+  xlab("Temp (C)")
+mul.ridge
+#gg
+gg.ridge <- ggplot()+
+  geom_density_ridges2(gg.r,fill = c('firebrick1'),
+                      mapping = aes(x = Value,
+                                    y=site,
+                                    scale=1))+
+  theme_classic()+
+  theme(axis.title.y=element_blank(),
+        axis.title.x=element_text(size = 17),
+        axis.ticks.y=element_blank(),
+        strip.text.y = element_text(angle = 180, hjust = 1),
+        line = element_blank(),
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))+
+  scale_x_continuous( expand = c(0.01, 0)) +
+  scale_y_discrete(expand = c(0.001, 0))+
+  xlab("Temp (C)")
+gg.ridge
+ggsave("gg.ridge.png", plot = last_plot())
+```
+  
+General timeseries- Not working, gave up
+```{r}
+#heads
+head.r <- c("ULB2HA","ULB3HA", "ULB4HA", "RMO1HA", "RMO2HA", "RMO3HA", "MUL2HA",  "MUL4HB",  "MUL7HB", "W600B", "GC300B", "LS180B")
+#downstream
+down.r <- c("ULB2CB", "ULB3CB", "ULB4CA", "RMO1CB",  "RMO2CB",  "RMO3CB", "MUL2CB", "MUL4CA",  "MUL7CA", "W400A", "GC100B",  "LS0B")
+#subset master dataset
+head.r <- filter(master, site %in% head.r)
+down.r <- filter(master, site %in% down.r)
+#change variable names to remove A/B
+head.r$site <- gsub('.{1}$', '', head.r$site)
+down.r$site <- gsub('.{1}$', '', down.r$site)
+#plots
+head.plot <- ggplot(data = head.r)+
+  geom_line(aes(x = rnd.dates,
+                y = Value,
+                color = site))+
+  scale_color_manual("",
+                     breaks = c(head.r),
+                     values = c("turquoise","turquoise","turquoise",
+                                "sienna1","sienna1","sienna1", "firebrick1",
+                                "firebrick1","firebrick1",
+                                "midnightblue","midnightblue","midnightblue"))+
+  theme_classic()
+  
+  scale_color_manual(
+  values = c("turquoise","turquoise","turquoise","sienna1","sienna1","sienna1", "firebrick1","firebrick1","firebrick1","midnightblue","midnightblue","midnightblue"),
+  limits = c(head.r), breaks =c(head.r),
+  name = "Relative Elevation", labels = c("High", "Medium", "Medium/Low", "Low"))+
+  theme_classic()
+head.plot
 ```
 
