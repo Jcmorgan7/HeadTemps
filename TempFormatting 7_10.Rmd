@@ -424,7 +424,7 @@ rmo.ridge <- ggplot()+
   geom_density_ridges2(rmo.r,fill = c('sienna1'),
                       mapping = aes(x = Value,
                                     y=site,
-                                    scale=1))+
+                                    scale=0.85))+
   theme_classic()+
   theme(axis.title.y=element_blank(),
         axis.title.x=element_text(size = 17),
@@ -481,7 +481,7 @@ gg.ridge <- ggplot()+
 gg.ridge
 ggsave("gg.ridge.png", plot = gg.ridge, width = 7.5, height = 7, units = c("in"))
 ggsave("mul.ridge.png", plot = mul.ridge, width = 7.5, height = 7, units = c("in"))
-ggsave("rmo.ridge.png", plot = rmo.ridge, width = 7.5, height = 7, units = c("in"))
+ggsave("rmo.ridge2.png", plot = rmo.ridge, width = 7.5, height = 7, units = c("in"))
 ggsave("ulb.ridge.png", plot = ulb.ridge, width = 7.5, height = 7, units = c("in"))
 
 ```
