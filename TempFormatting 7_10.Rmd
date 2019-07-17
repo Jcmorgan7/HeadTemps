@@ -25,8 +25,6 @@ library(ggplot2)
 library(ggridges)
 library(lubridate)
 library(SAVER)
-#add ggsave to export stuff
-#library(ggsave)
 ```
 
 ```{r}
@@ -90,8 +88,11 @@ master$Value[74005] <- NA
 master$Value[which(master$Value > 35, arr.ind = T)] <- NA
 #setting everything below 0 = NA, it didn't get below 0
 master$Value[which(master$Value < 0, arr.ind = T)] <- NA
+#remove LS180A and W600A
+
 master$rnd.dates <- as.POSIXct(master$rnd.dates, format = "%Y-%M-%d %H:%M:%S")
 
+write.csv(master, file = "Formatted.temps.tall_7_17.csv")
 ```
 
 Before I can plot, I have to subset the data in ways that I want it all plotted

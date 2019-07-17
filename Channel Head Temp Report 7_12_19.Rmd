@@ -18,4 +18,23 @@ Things I want to show:
 
 Removed Data
   LS180B: 3763, 3764
-  Considering removing all of LS180
+  Considering removing all of LS180A
+  removed W600A
+  GC300A sensor is missing
+  removed ULB4HB
+  removed MUL4HB, 4CB is missing
+  removed MUL7HA
+
+```{r}
+#Load packages
+library(tidyverse)
+library(ggridges)
+library(lubridate)
+library(SAVER)
+```
+
+```{r}
+master.spread <- select(master, Value, rnd.dates, site)
+master.spread <- master.spread %>% spread(site, value = Value)
+```
+
