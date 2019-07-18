@@ -99,7 +99,7 @@ Before I can plot, I have to subset the data in ways that I want it all plotted
 ```{r}
 #plotting time!
 #heads
-sites.heads <- c("ULB2HA", "ULB3HA", "ULB4HA", "W600A", "GC300A", "LS180A", "MUL2HA", "MUL7HA", "RMO1HA", "RMO2HA", "RMO3HA")
+sites.heads <- c("RMO3HB", "RMO3HA")
 head <- filter(master, site %in% sites.heads)
 heads.plot <- ggplot(data = head)+
   geom_line(aes(x = rnd.dates, 
@@ -178,7 +178,7 @@ gg.1 <- c("W600A", "W600B", "W400A", "W400B") #removed W600A, super shallow/in s
 gg.2 <- c("GC300B", "GC100A", "GC100B") #GC300A is missing, spike in 300B but is visible downstream
 gg.3 <- c("LS180B", "LS0A", "LS0B")
 
-cal <- filter(master, site %in% gg.3)
+cal <- filter(master, site %in% rmo.3)
 c.plot <- ggplot(data = cal)+
   geom_line(aes(x = rnd.dates,
                 y = Value,

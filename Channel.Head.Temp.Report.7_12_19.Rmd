@@ -1,35 +1,36 @@
 ---
-title: "R Notebook"
+title: "Channel Head Temp Report 7_18_19"
 output:
-  pdf_document: default
+  html_document:
+    df_print: paged
   html_notebook: default
+  pdf_document: default
 ---
-Channel Head Temp Report 7_18_19
+Like last time, here is a little report with some plots of what I've looked at so far! With this document should be a link to the git repository this is in, as well as a copy of the spreadsheet with all of the data formatted! I have also included code to convert the data (which is tall in the csv) into the wide format I've used in the past before I knew the wonders of tidyr!  
 
-The stream temperature sensors were all collected the other day after being deployed for 25 days, and I've been playing around with the data. The sensors collected the temp every 10 minutes. 2 sensors were deployed at the channel head and ~200 m downstream. Additionally, an air temp was recorded at the head of one of the channels in each watershed.
+A brief recap:
+The stream temperature sensors were all collected the other day after being deployed for 25 days, and I've been playing around with the data. The sensors collected the temp every 10 minutes. 2 sensors were deployed at the channel head and ~200 m downstream. Additionally, an air temp was recorded at the head of one of the channels in each watershed.  
 
-Data time period
-Start date: 6-13-19 13:10
-End date: 7-8-19 11:20
+Data time period  
+Start date: 6-13-19 13:10  
+End date: 7-8-19 11:20  
 
-Things I want to show:
-  -maps of sheds for reference
-  -General temp time series
-  -Distribution of temps (ridge plots)
-  -Diff between heads and downstream
-  -temps normalized by air temp
+MUL = Mull Creek, high elevation ~ 1600 m  
+RMO = Moses Creek, med elevation ~ 1300 m  
+ULB = Long Branch, mid/low elev ~ 850 m  
+GG = Gribble Gap, low elev ~ 700 m  
 
-Removed Data
-  LS180B: 3763, 3764
-  Considering removing all of LS180A
-  removed W600A
-  GC300A sensor is missing
-  removed ULB4HB
-  removed MUL4HB, 4CB is missing
-  removed MUL7HA
-  RMO3HA missing- appears to have been in data before, gone now, but still have RMO3HB
-
-```{r}
+Removed Data- Data was removed for being weird (values of -53 C!), or obviously not in water for a significant period of time  
+  LS180B: 3763, 3764  
+  removed LS180A  
+  removed W600A  
+  GC300A sensor is missing  
+  removed ULB4HB  
+  removed MUL4HB, 4CB is missing  
+  removed MUL7HA  
+  RMO3HA missing- appears to have been in data before, gone now, but still have RMO3HB  
+  
+```{r, include = FALSE, warning = FALSE, message = FALSE }
 #Load packages
 library(tidyverse)
 library(ggridges)
@@ -58,10 +59,11 @@ one.sens$site <- gsub('.{1}$', '', one.sens$site)
 timeseries <- one.sens
 #rmo with airT
 rmo.ts <- timeseries %>% filter(shed == "RMO")
+rmo.ts <- na.omit(rmo.ts)
 rmo.ts.plot <- ggplot(data = rmo.ts, 
                       aes(x = rnd.dates,
                           y = Value,
-                          color = site))+
+                          color = site), na.rm = T)+
   geom_line(size = 1)+
   scale_color_brewer(palette = "Set1",
                      name = "Site")+
@@ -135,7 +137,7 @@ Plots of Long Branch timeseries- first with AirT, second without AirT
 ulb.ts.plot <- ggplot(data = ulb.ts, 
                       aes(x = rnd.dates,
                           y = Value,
-                          color = site))+
+                          color = site), na.rm = T)+
   geom_line(size = 1)+
   scale_color_brewer(palette = "Set1",
                      name = "Site")+
@@ -149,7 +151,7 @@ ulb.ts.plot2 <- ggplot(data = ulb.ts2,
                        aes(x = rnd.dates,
                            y = Value,
                            color = site,
-                           linetype = type))+
+                           linetype = type), na.rm = T)+
   geom_line(size = 1)+
   scale_color_brewer(palette = "Set1",
                      name = "Site")+
@@ -196,4 +198,227 @@ gg.ts.plot2 <- ggplot(data = gg.ts2,
 gg.ts.plot2
 ```
 
+Plots of diff between downstream and head vs air- sort of like contour lines, the closer the lines are together the denser the points would be- just having points didn't display these relationships very well
 
+Gribble Gap  
+```{r, warning=FALSE, message=FALSE}
+#make data frames with differences
+#easiest way I could devise was by using the wide/spread data
+attach(master.spread)
+ulb.diffs <- data.frame("ULB2"= ULB2CA - ULB2HA,
+                        "ULB3"= ULB3CA - ULB3HA,
+                        "ULB4"= ULB4CA - ULB4HA,
+                        "ULBAir" = ULBAir)
+rmo.diffs <- data.frame("RMO1" = RMO1CA - RMO1HA,
+                        "RMO2" = RMO2CA - RMO2HA,
+                        "RMO3" = RMO3CA - RMO3HB,
+                        "RMOAir" = RMOAir)
+mul.diffs <- data.frame("MUL2" = MUL2CA - MUL2HA,
+                        "MUL4" = MUL4CA - MUL4HB,
+                        "MUL7" = MUL7CA - MUL7HB,
+                        "MULAir" = MULAir)
+gg.diffs <- data.frame("GGAir" = GGAir,
+                       "W" = W400A - W600A,
+                       "GC" = GC100A - GC300B,
+                       "LS" = LS0B - LS180B)
+detach(master.spread)
+
+#make em tall- wtih ULBAir as the spreader
+ulb.tall.diffs <- ulb.diffs %>% gather(site, temp, -ULBAir)
+gg.tall.diffs <- gg.diffs %>% gather(site, temp, -GGAir)
+rmo.tall.diffs <- rmo.diffs %>% gather(site, temp, -RMOAir)
+mul.tall.diffs <- mul.diffs %>% gather(site, temp, -MULAir)
+
+gg.diff.plot <- ggplot(data = gg.tall.diffs, 
+                       aes(x = GGAir,
+                           y = temp,
+                           color = site))+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  stat_density2d(size = 1, na.rm = T)+
+   xlim(10, 28)+
+  ylim(0,5)+
+  ylab("Downstream Temp - Head Temp (C)")+
+  xlab("Air Temperature (C)")+
+  theme_classic()
+gg.diff.plot
+```
+Long Branch diff plot  
+```{r, echo = FALSE, warning=FALSE, message=FALSE}
+#ulb
+ulb.diff.plot <- ggplot(data = ulb.tall.diffs, 
+                       aes(x = ULBAir,
+                           y = temp,
+                           color = site))+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  stat_density2d(size = 1, na.rm = T)+
+  xlim(10, 28)+
+   ylim(0,5)+
+  ylab("Downstream Temp - Head Temp (C)")+
+  xlab("Air Temperature (C)")+
+  theme_classic()
+ulb.diff.plot
+#rmo
+rmo.diff.plot <- ggplot(data = rmo.tall.diffs, 
+                       aes(x = RMOAir,
+                           y = temp,
+                           color = site))+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  stat_density2d(size = 1, na.rm = T)+
+   xlim(10, 28)+
+   ylim(0,5)+
+  ylab("Downstream Temp - Head Temp (C)")+
+  xlab("Air Temperature (C)")+
+  theme_classic()
+#mul
+mul.diff.plot <- ggplot(data = mul.tall.diffs, 
+                       aes(x = MULAir,
+                           y = temp,
+                           color = site))+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  stat_density2d(size = 1, na.rm = T)+
+   xlim(10, 28)+
+   ylim(0,5)+
+  ylab("Downstream Temp - Head Temp (C)")+
+  xlab("Air Temperature (C)")+
+  theme_classic()
+
+```
+Moses Creek diff plot  
+```{r,echo = FALSE, warning=FALSE, message=FALSE}
+rmo.diff.plot
+```
+Mull Creek diff plot  
+```{r,  echo = FALSE, warning=FALSE, message=FALSE}
+mul.diff.plot
+```
+Mull Creek diff plot  
+
+Ridge plots with head and C- show distribution of temperature, similar to a box plot
+Long Branch temp distributions  
+```{r, warning=FALSE, message=FALSE}
+ulb.r <- c("ULB2HA", "ULB2CB","ULB3HA", "ULB3CB", "ULB4HA", "ULB4CA")
+#subset master dataset
+ulb.r <- filter(master.tall, site %in% ulb.r)
+#remove A/B from site names
+ulb.r$site <- gsub('.{1}$', '', ulb.r$site)
+
+#adding fudged numbers to fix the x limits- trying to set an xlim on these plots messes them up
+ulb.r$Value[100] <- 9
+ulb.r$Value[200] <- 19
+#make ridge plots
+ulb.ridge <- ggplot()+
+  geom_density_ridges2(ulb.r,fill = c('midnightblue'),
+                      mapping = aes(x = Value,
+                                    y=site,
+                                    scale=1), na.rm = T)+
+  theme_classic()+
+  theme(axis.title.y=element_blank(),
+        #axis.title.x=element_text(size = 17),
+        axis.ticks.y=element_blank(),
+        strip.text.y = element_text(angle = 180, hjust = 1),
+        line = element_blank())+
+        #axis.text.x = element_text(size = 17),
+        #axis.text.y = element_text(size = 17))+
+  scale_x_continuous( expand = c(0.01, 0)) +
+  scale_y_discrete(expand = c(0.001, 0))+
+  xlab("Temp (C)")
+ulb.ridge
+```
+
+Moses Creek Temp distributions  
+```{r, echo = FALSE, warning=FALSE, message=FALSE}
+#ULB
+#rmo
+rmo.r <- c("RMO1HA", "RMO1CB", "RMO2HA", "RMO2CB", "RMO3HB", "RMO3CB")
+#mul
+mul.r <- c("MUL2HA", "MUL2CB", "MUL4HB", "MUL4CA", "MUL7HB", "MUL7CA") 
+#gg
+gg.r <- c("W600B", "W400A", "GC300B","GC100B", "LS180B", "LS0B")
+#labels
+labelz <- c("Head", "Downstream", "Head", "Downstream", "Head", "Downstream") 
+
+rmo.r <- filter(master.tall, site %in% rmo.r)
+mul.r <- filter(master.tall, site %in% mul.r)
+gg.r <- filter(master.tall, site %in% gg.r)
+#change variable names to remove A/B
+rmo.r$site <- gsub('.{1}$', '', rmo.r$site)
+mul.r$site <- gsub('.{1}$', '', mul.r$site)
+gg.r$site <- gsub('.{1}$', '', gg.r$site)
+
+rmo.r$Value[100] <- 9
+rmo.r$Value[200] <- 19
+mul.r$Value[100] <- 9
+mul.r$Value[200] <- 19
+gg.r$Value[100] <- 9
+gg.r$Value[200] <- 19
+rmo.r$Value[which(rmo.r$Value > 19, arr.ind = T)] <- 19
+
+#rmo
+rmo.ridge <- ggplot()+
+  geom_density_ridges2(rmo.r,fill = c('sienna1'),
+                      mapping = aes(x = Value,
+                                    y=site,
+                                    scale=0.85), na.rm = T)+
+  theme_classic()+
+  theme(axis.title.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        strip.text.y = element_text(angle = 180, hjust = 1),
+        line = element_blank())+
+  scale_x_continuous( expand = c(0.01, 0)) +
+  scale_y_discrete(expand = c(0.001, 0))+
+  xlab("Temp (C)")
+rmo.ridge
+#mul
+mul.ridge <- ggplot()+
+  geom_density_ridges2(mul.r,fill = c('turquoise'),
+                      mapping = aes(x = Value,
+                                    y=site,
+                                    scale=1), na.rm = T)+
+  theme_classic()+
+  theme(axis.title.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        strip.text.y = element_text(angle = 180, hjust = 1),
+        line = element_blank())+
+  scale_x_continuous( expand = c(0.01, 0)) +
+  scale_y_discrete(expand = c(0.001, 0))+
+  xlab("Temp (C)")
+
+#gg
+gg.ridge <- ggplot()+
+  geom_density_ridges2(gg.r,fill = c('firebrick1'),
+                      mapping = aes(x = Value,
+                                    y=site,
+                                    scale=1), na.rm = T)+
+  theme_classic()+
+  theme(axis.title.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        strip.text.y = element_text(angle = 180, hjust = 1),
+        line = element_blank())+
+  scale_x_continuous( expand = c(0.01, 0)) +
+  scale_y_discrete(expand = c(0.001, 0), 
+                   labels =c("W600" = "Head (W)",
+                             "W400"="Downstream (W)",
+                             "LS180"="Head (LS)",
+                             "LS0"="Downstream (LS)",
+                             "GC300"="Head (GC)",
+                             "GC100"="Downstream (GC)"))+
+  xlab("Temp (C)")
+```
+Mull Creek temp distributions  
+```{r, echo = FALSE, warning=FALSE, message=FALSE}
+mul.ridge
+```
+Gribble Gap temp distributions  
+```{r, echo = FALSE, warning=FALSE, message=FALSE}
+gg.ridge
+```
+
+Overall, this temperature data is looking really cool! I'm currently working on getting my topographic metrics (slope, drainage area, curvature) organised and then I'm going to slap together with the temperatures. This summer program is winding to a close and I have to do some other things for it so I've had to prioritize that temporarily. 
+
+Trends that we were expecting and saw were the very constant temps at the heads, and that the head temps vary with elevation- the highest elevation sites (Mull creek) have the lowest head temps. 
+
+Let me know what you think! And if you make any sick plots with the data!
