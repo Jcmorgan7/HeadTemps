@@ -1,0 +1,199 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+Channel Head Temp Report 7_18_19
+
+The stream temperature sensors were all collected the other day after being deployed for 25 days, and I've been playing around with the data. The sensors collected the temp every 10 minutes. 2 sensors were deployed at the channel head and ~200 m downstream. Additionally, an air temp was recorded at the head of one of the channels in each watershed.
+
+Data time period
+Start date: 6-13-19 13:10
+End date: 7-8-19 11:20
+
+Things I want to show:
+  -maps of sheds for reference
+  -General temp time series
+  -Distribution of temps (ridge plots)
+  -Diff between heads and downstream
+  -temps normalized by air temp
+
+Removed Data
+  LS180B: 3763, 3764
+  Considering removing all of LS180A
+  removed W600A
+  GC300A sensor is missing
+  removed ULB4HB
+  removed MUL4HB, 4CB is missing
+  removed MUL7HA
+  RMO3HA missing- appears to have been in data before, gone now, but still have RMO3HB
+
+```{r}
+#Load packages
+library(tidyverse)
+library(ggridges)
+library(lubridate)
+library(SAVER)
+```
+
+```{r}
+#read in formatted tall data
+master.tall <- read.csv("Formatted.temps.tall_7_17.csv")
+master.tall$rnd.dates <-ymd_hms(master.tall$rnd.dates)
+#convert tall data to wide- how I have sent you temp data in the past
+master.spread <- select(master.tall, Value, rnd.dates, site)
+master.spread <- master.spread %>% spread(site, value = Value)
+```
+  
+Basic temperature trends/timeseries
+
+First plot is the temps from each site in Moses Creek (RMO) for the entire deployment. The second plot is the same thing with the AirT removed. 
+```{r,  fig.width=12, fig.height=4, warning=FALSE, message=FALSE}
+#filtering out duplicate sites/sensors- just for this plotting
+all.ts <- c("ULB2HA","ULB3HA", "ULB4HA", "RMO1HA", "RMO2HA", "RMO3HB", "MUL2HA",  "MUL4HB",  "MUL7HB", "W600B", "GC300B", "LS180B","ULB2CB", "ULB3CB", "ULB4CA", "RMO1CB",  "RMO2CB",  "RMO3CB", "MUL2CB", "MUL4CA",  "MUL7CA", "W400A", "GC100B",  "LS0B", "MULAir", "GGAir", "RMOAir", "ULBAir")
+
+one.sens <- master.tall %>% filter(site %in% all.ts)
+one.sens$site <- gsub('.{1}$', '', one.sens$site)
+timeseries <- one.sens
+#rmo with airT
+rmo.ts <- timeseries %>% filter(shed == "RMO")
+rmo.ts.plot <- ggplot(data = rmo.ts, 
+                      aes(x = rnd.dates,
+                          y = Value,
+                          color = site))+
+  geom_line(size = 1)+
+  scale_color_brewer(palette = "Set1",
+                     name = "Site")+
+  xlab(" ")+
+  ylab("Temperature (C)")+
+  ylim(7,25)+
+  theme_classic()
+rmo.ts.plot
+#rmo without airT
+rmo.ts2 <- timeseries %>% filter(shed == "RMO" & type != "air")
+rmo.ts.plot2 <- ggplot(data = rmo.ts2,
+                       aes(x = rnd.dates,
+                           y = Value,
+                           color = site,
+                           linetype = type))+
+  geom_line(size = 1)+
+  scale_color_brewer(palette = "Set1",
+                     name = "Site")+
+  scale_linetype_manual(labels = c("Downstream", "Head"),
+                        values=c("solid", "dashed"),
+                        name = "Location")+
+  xlab(" ")+
+  ylab("Temperature (C)")+
+  ylim(9,19)+
+  theme_classic()
+rmo.ts.plot2
+```
+Plots of Mull Creek timeseries- first with AirT, second without AirT
+  
+```{r, echo = FALSE,fig.width=12, fig.height=4, warning=FALSE, message=FALSE}
+mul.ts <- timeseries %>% filter(shed == "MUL")
+ulb.ts <- timeseries %>% filter(shed == "ULB")
+gg.ts <- timeseries %>% filter(shed == "GG")
+
+mul.ts2 <- timeseries %>% filter(shed == "MUL" & type != "air")
+ulb.ts2 <- timeseries %>% filter(shed == "ULB" & type != "air")
+gg.ts2 <- timeseries %>% filter(shed == "GG" & type != "air")
+
+mul.ts.plot <- ggplot(data = mul.ts, 
+                      aes(x = rnd.dates,
+                          y = Value,
+                          color = site))+
+  geom_line(size = 1)+
+  scale_color_brewer(palette = "Set1",
+                     name = "Site")+
+  xlab(" ")+
+  ylab("Temperature (C)")+
+  ylim(7,25)+
+  theme_classic()
+mul.ts.plot
+#rmo without airT
+mul.ts.plot2 <- ggplot(data = mul.ts2,
+                       aes(x = rnd.dates,
+                           y = Value,
+                           color = site,
+                           linetype = type))+
+  geom_line(size = 1)+
+  scale_color_brewer(palette = "Set1",
+                     name = "Site")+
+  scale_linetype_manual(labels = c("Downstream", "Head"),
+                        values=c("solid", "dashed"),
+                        name = "Location")+
+  xlab(" ")+
+  ylab("Temperature (C)")+
+  ylim(9,19)+
+  theme_classic()
+mul.ts.plot2
+```
+Plots of Long Branch timeseries- first with AirT, second without AirT  
+```{r, echo = FALSE,fig.width=12, fig.height=4, warning=FALSE, message=FALSE}
+ulb.ts.plot <- ggplot(data = ulb.ts, 
+                      aes(x = rnd.dates,
+                          y = Value,
+                          color = site))+
+  geom_line(size = 1)+
+  scale_color_brewer(palette = "Set1",
+                     name = "Site")+
+  xlab(" ")+
+  ylab("Temperature (C)")+
+  ylim(7,25)+
+  theme_classic()
+ulb.ts.plot
+#rmo without airT
+ulb.ts.plot2 <- ggplot(data = ulb.ts2,
+                       aes(x = rnd.dates,
+                           y = Value,
+                           color = site,
+                           linetype = type))+
+  geom_line(size = 1)+
+  scale_color_brewer(palette = "Set1",
+                     name = "Site")+
+  scale_linetype_manual(labels = c("Downstream", "Head"),
+                        values=c("solid", "dashed"),
+                        name = "Location")+
+  xlab(" ")+
+  ylab("Temperature (C)")+
+  ylim(9,19)+
+  theme_classic()
+ulb.ts.plot2
+```
+Plots of Gribble Gap timeseries- first with AirT, second without AirT  
+
+```{r, echo = FALSE,fig.width=12, fig.height=4, warning=FALSE, message=FALSE}
+gg.ts.plot <- ggplot(data = gg.ts, 
+                      aes(x = rnd.dates,
+                          y = Value,
+                          color = site))+
+  geom_line(size = 1)+
+  scale_color_brewer(palette = "Set1",
+                     name = "Site")+
+  xlab(" ")+
+  ylab("Temperature (C)")+
+  ylim(7,25)+
+  theme_classic()
+gg.ts.plot
+#rmo without airT
+gg.ts.plot2 <- ggplot(data = gg.ts2,
+                       aes(x = rnd.dates,
+                           y = Value,
+                           color = site,
+                           linetype = type))+
+  geom_line(size = 1)+
+  scale_color_brewer(palette = "Set1",
+                     name = "Site")+
+  scale_linetype_manual(labels = c("Downstream", "Head"),
+                        values=c("solid", "dashed"),
+                        name = "Location")+
+  xlab(" ")+
+  ylab("Temperature (C)")+
+  ylim(9,19)+
+  theme_classic()
+gg.ts.plot2
+```
+
+
