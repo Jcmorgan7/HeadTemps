@@ -24,6 +24,7 @@ Removed Data
   removed ULB4HB
   removed MUL4HB, 4CB is missing
   removed MUL7HA
+  RMO3HA missing- appears to have been in data before, gone now, but still have RMO3HB
 
 ```{r}
 #Load packages
@@ -36,125 +37,51 @@ library(SAVER)
 ```{r}
 #read in formatted tall data
 master.tall <- read.csv("Formatted.temps.tall_7_17.csv")
+master.tall$rnd.dates <- as.POSIXct(master.tall$rnd.dates, format = "%Y-%M-%d %H:%M:%S")
+master.tall$rnd.dates <-ymd_hms(master.tall$rnd.dates)
 #convert tall data to wide- how I have sent you temp data in the past
 master.spread <- select(master.tall, Value, rnd.dates, site)
 master.spread <- master.spread %>% spread(site, value = Value)
 ```
 
-```{r,  fig.width=12, fig.height=4}
-#shotened time period for poster plots
-#start <- mdy_hm("6-25-19 12:10")
-#end <- mdy_hm("7-5-19 12:10")
-#timeseries <- filter(master, rnd.dates >= start)
-#timeseries <- filter(master, rnd.dates <= end)
+```{r,  fig.width=12, fig.height=4, warning=FALSE, message=FALSE}
+#filtering out duplicate sites/sensors- just for this plotting
+all.ts <- c("ULB2HA","ULB3HA", "ULB4HA", "RMO1HA", "RMO2HA", "RMO3HB", "MUL2HA",  "MUL4HB",  "MUL7HB", "W600B", "GC300B", "LS180B","ULB2CB", "ULB3CB", "ULB4CA", "RMO1CB",  "RMO2CB",  "RMO3CB", "MUL2CB", "MUL4CA",  "MUL7CA", "W400A", "GC100B",  "LS0B", "MULAir", "GGAir", "RMOAir", "ULBAir")
 
-all.ts <- c("ULB2HA","ULB3HA", "ULB4HA", "RMO1HA", "RMO2HA", "RMO3HA", "MUL2HA",  "MUL4HB",  "MUL7HB", "W600B", "GC300B", "LS180B","ULB2CB", "ULB3CB", "ULB4CA", "RMO1CB",  "RMO2CB",  "RMO3CB", "MUL2CB", "MUL4CA",  "MUL7CA", "W400A", "GC100B",  "LS0B", "MULAir", "GGAir", "RMOAir", "ULBAir")
-
-timeseries <- master.tall %>% filter(site %in% all.ts)
-timeseries$site <- gsub('.{1}$', '', timeseries$site)
-timeseries$site <- gsub('.{1}$', '', timeseries$site)
-
-ulb.ts <- timeseries %>% filter(shed == "ULB" & type != "air")
-mul.ts <- timeseries %>% filter(shed == "MUL" & type != "air")
+one.sens <- master.tall %>% filter(site %in% all.ts)
+one.sens$site <- gsub('.{1}$', '', one.sens$site)
+timeseries <- one.sens
+#rmo with airT
 rmo.ts <- timeseries %>% filter(shed == "RMO")
-gg.ts <- timeseries %>% filter(shed == "GG" & type != "air")
-
-ulb.ts <- master.tall %>% filter(shed == "ULB")
-mul.ts <- master.tall %>% filter(shed == "MUL")
-rmo.ts <- master.tall %>% filter(shed == "RMO")
-gg.ts <- master.tall %>% filter(shed == "GG")
-#ulb
-rmo.ts.plot <- ggplot(data = rmo.ts)+
-  geom_line(aes(x = rnd.dates,
-                y = Value,
-                color = site,
-                linetype = type), 
-            size = 1.5)+
-  scale_linetype_manual(labels = c("Head", "Downstream","Air"),
-                        values=c("solid", "dotted","dash"),
-                        name = "Location")+
-   scale_color_brewer(palette = "Dark2",
-                     name = "Stream")+
-  xlab( " ")+
+rmo.ts.plot <- ggplot(data = rmo.ts, 
+                      aes(x = rnd.dates,
+                          y = Value,
+                          color = site))+
+  geom_line(size = 1)+
+  scale_color_brewer(palette = "Set1",
+                     name = "Site")+
+  xlab(" ")+
   ylab("Temperature (C)")+
-  ylim(9, 19)+
-  theme_classic()+
-  theme(text= element_text(size=17),
-        axis.text.x = element_text(size = 17),
-        axis.text.y = element_text(size = 17))
+  ylim(7,25)+
+  theme_classic()
 rmo.ts.plot
-#rmo
-ulb.ts.plot <- ggplot(data = ulb.ts)+
-  geom_line(aes(x = rnd.dates,
-                y = Value,
-                color = site,
-                linetype = type), 
-            size = 1.5)+
-  scale_color_brewer(palette = "Dark2",
-                     name = "Stream")+
-  scale_linetype_manual(values=c("solid", "dotted"),
-                        name = "Location",
-                        labels = c("Head", "Downstream"))+
-  xlab( " ")+
+#rmo without airT
+rmo.ts2 <- timeseries %>% filter(shed == "RMO" & type != "air")
+rmo.ts.plot2 <- ggplot(data = rmo.ts2,
+                       aes(x = rnd.dates,
+                           y = Value,
+                           color = site,
+                           linetype = type))+
+  geom_line(size = 1)+
+  scale_color_brewer(palette = "Set1",
+                     name = "Site")+
+  scale_linetype_manual(labels = c("Downstream", "Head"),
+                        values=c("solid", "dashed"),
+                        name = "Location")+
+  xlab(" ")+
   ylab("Temperature (C)")+
-  ylim(9, 19)+
-  theme_classic()+
-  theme(text= element_text(size=17),
-        axis.text.x = element_text(size = 17),
-        axis.text.y = element_text(size = 17))+
-  guides(color = guide_legend(order = 1), 
-              linetype = guide_legend(order = 2))
-ulb.ts.plot 
-#mul
-mul.ts.plot <- ggplot(data = mul.ts)+
-  geom_line(aes(x = rnd.dates,
-                y = Value,
-                color = site,
-                linetype = type), 
-            size = 1.5)+
-  scale_color_brewer(palette = "Dark2",
-                     name = "Stream")+
-  scale_linetype_manual(values=c("solid", "dotted"),
-                        name = "Location",
-                        labels = c("Head", "Downstream"))+
-  xlab( " ")+
-  ylab("Temperature (C)")+
-  ylim(9, 19)+
-  theme_classic()+
-  theme(text= element_text(size=17),
-        axis.text.x = element_text(size = 17),
-        axis.text.y = element_text(size = 17))
-mul.ts.plot
-#gg
-gg.names <- data.frame("names" =c("Wind","Glacier", "Glacier","Landslide","Wind","Landslide"), 
-                       "site" = c("W40","GC10","GC30","LS18","W60","LS"))
-gg.ts <- gg.ts %>% inner_join(gg.names, by = "site")
-
-gg.ts.plot <- ggplot(data = gg.ts, aes(x = rnd.dates,
-                y = Value,
-                color = names,
-                linetype = type))+
-  geom_line(size = 1.5)+
-  scale_color_brewer(palette = "Dark2",
-                     name = "Stream")+
-  scale_linetype_manual(values=c("solid", "dotted"),
-                        name = "Location",
-                        labels = c("Head", "Downstream"))+
-  xlab( " ")+
-  ylab("Temperature (C)")+
-  ylim(9, 19)+
-  theme_classic()+
-  theme(text= element_text(size=17),
-        axis.text.x = element_text(size = 17),
-        axis.text.y = element_text(size = 17))
-gg.ts.plot
-
-
-
-
-ggsave("ulb.ts.png", plot = ulb.ts.plot, width = 8, height = 5, units = c("in"))
-ggsave("mul.ts.png", plot = mul.ts.plot, width = 8, height = 5, units = c("in"))
-ggsave("rmo.ts.png", plot = rmo.ts.plot, width = 8, height = 5, units = c("in"))
-ggsave("gg.ts.png", plot = gg.ts.plot, width = 8, height = 5, units = c("in"))
+  ylim(9,19)+
+  theme_classic()
+rmo.ts.plot2
 ```
 
