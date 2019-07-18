@@ -30,7 +30,7 @@ Removed Data- Data was removed for being weird (values of -53 C!), or obviously 
   removed MUL7HA  
   RMO3HA missing- appears to have been in data before, gone now, but still have RMO3HB  
   
-```{r, include = FALSE, warning = FALSE, message = FALSE }
+```{r, echo = FALSE, warning = FALSE, message = FALSE }
 #Load packages
 library(tidyverse)
 library(ggridges)
@@ -49,7 +49,7 @@ master.spread <- master.spread %>% spread(site, value = Value)
   
 Basic temperature trends/timeseries
 
-First plot is the temps from each site in Moses Creek (RMO) for the entire deployment. The second plot is the same thing with the AirT removed. 
+First plot is the temps from each site in Moses Creek (~ 1300 m) (RMO) for the entire deployment. The second plot is the same thing with the AirT removed. 
 ```{r,  fig.width=12, fig.height=4, warning=FALSE, message=FALSE}
 #filtering out duplicate sites/sensors- just for this plotting
 all.ts <- c("ULB2HA","ULB3HA", "ULB4HA", "RMO1HA", "RMO2HA", "RMO3HB", "MUL2HA",  "MUL4HB",  "MUL7HB", "W600B", "GC300B", "LS180B","ULB2CB", "ULB3CB", "ULB4CA", "RMO1CB",  "RMO2CB",  "RMO3CB", "MUL2CB", "MUL4CA",  "MUL7CA", "W400A", "GC100B",  "LS0B", "MULAir", "GGAir", "RMOAir", "ULBAir")
@@ -58,12 +58,10 @@ one.sens <- master.tall %>% filter(site %in% all.ts)
 one.sens$site <- gsub('.{1}$', '', one.sens$site)
 timeseries <- one.sens
 #rmo with airT
-rmo.ts <- timeseries %>% filter(shed == "RMO")
-rmo.ts <- na.omit(rmo.ts)
-rmo.ts.plot <- ggplot(data = rmo.ts, 
+gg.ts.plot <- ggplot(data = gg.ts, 
                       aes(x = rnd.dates,
                           y = Value,
-                          color = site), na.rm = T)+
+                          color = site))+
   geom_line(size = 1)+
   scale_color_brewer(palette = "Set1",
                      name = "Site")+
@@ -71,10 +69,9 @@ rmo.ts.plot <- ggplot(data = rmo.ts,
   ylab("Temperature (C)")+
   ylim(7,25)+
   theme_classic()
-rmo.ts.plot
+gg.ts.plot
 #rmo without airT
-rmo.ts2 <- timeseries %>% filter(shed == "RMO" & type != "air")
-rmo.ts.plot2 <- ggplot(data = rmo.ts2,
+gg.ts.plot2 <- ggplot(data = gg.ts2,
                        aes(x = rnd.dates,
                            y = Value,
                            color = site,
@@ -89,9 +86,40 @@ rmo.ts.plot2 <- ggplot(data = rmo.ts2,
   ylab("Temperature (C)")+
   ylim(9,19)+
   theme_classic()
-rmo.ts.plot2
+gg.ts.plot2
+
+ulb.ts.plot <- ggplot(data = ulb.ts, 
+                      aes(x = rnd.dates,
+                          y = Value,
+                          color = site), na.rm = T)+
+  geom_line(size = 1)+
+  scale_color_brewer(palette = "Set1",
+                     name = "Site")+
+  xlab(" ")+
+  ylab("Temperature (C)")+
+  ylim(7,25)+
+  theme_classic()
+ulb.ts.plot
+#rmo without airT
+ulb.ts.plot2 <- ggplot(data = ulb.ts2,
+                       aes(x = rnd.dates,
+                           y = Value,
+                           color = site,
+                           linetype = type), na.rm = T)+
+  geom_line(size = 1)+
+  scale_color_brewer(palette = "Set1",
+                     name = "Site")+
+  scale_linetype_manual(labels = c("Downstream", "Head"),
+                        values=c("solid", "dashed"),
+                        name = "Location")+
+  xlab(" ")+
+  ylab("Temperature (C)")+
+  ylim(9,19)+
+  theme_classic()
+ulb.ts.plot2
+
 ```
-Plots of Mull Creek timeseries- first with AirT, second without AirT
+Plots of Mull Creek timeseries- first with AirT, second without AirT ~ 1600 m
   
 ```{r, echo = FALSE,fig.width=12, fig.height=4, warning=FALSE, message=FALSE}
 mul.ts <- timeseries %>% filter(shed == "MUL")
@@ -133,8 +161,13 @@ mul.ts.plot2 <- ggplot(data = mul.ts2,
 mul.ts.plot2
 ```
 Plots of Long Branch timeseries- first with AirT, second without AirT  
+~ 850 m  
 ```{r, echo = FALSE,fig.width=12, fig.height=4, warning=FALSE, message=FALSE}
-ulb.ts.plot <- ggplot(data = ulb.ts, 
+
+rmo.ts <- na.omit(rmo.ts)
+
+rmo.ts <- timeseries %>% filter(shed == "RMO")
+rmo.ts.plot <- ggplot(data = rmo.ts, 
                       aes(x = rnd.dates,
                           y = Value,
                           color = site), na.rm = T)+
@@ -145,42 +178,10 @@ ulb.ts.plot <- ggplot(data = ulb.ts,
   ylab("Temperature (C)")+
   ylim(7,25)+
   theme_classic()
-ulb.ts.plot
+rmo.ts.plot
 #rmo without airT
-ulb.ts.plot2 <- ggplot(data = ulb.ts2,
-                       aes(x = rnd.dates,
-                           y = Value,
-                           color = site,
-                           linetype = type), na.rm = T)+
-  geom_line(size = 1)+
-  scale_color_brewer(palette = "Set1",
-                     name = "Site")+
-  scale_linetype_manual(labels = c("Downstream", "Head"),
-                        values=c("solid", "dashed"),
-                        name = "Location")+
-  xlab(" ")+
-  ylab("Temperature (C)")+
-  ylim(9,19)+
-  theme_classic()
-ulb.ts.plot2
-```
-Plots of Gribble Gap timeseries- first with AirT, second without AirT  
-
-```{r, echo = FALSE,fig.width=12, fig.height=4, warning=FALSE, message=FALSE}
-gg.ts.plot <- ggplot(data = gg.ts, 
-                      aes(x = rnd.dates,
-                          y = Value,
-                          color = site))+
-  geom_line(size = 1)+
-  scale_color_brewer(palette = "Set1",
-                     name = "Site")+
-  xlab(" ")+
-  ylab("Temperature (C)")+
-  ylim(7,25)+
-  theme_classic()
-gg.ts.plot
-#rmo without airT
-gg.ts.plot2 <- ggplot(data = gg.ts2,
+rmo.ts2 <- timeseries %>% filter(shed == "RMO" & type != "air")
+rmo.ts.plot2 <- ggplot(data = rmo.ts2,
                        aes(x = rnd.dates,
                            y = Value,
                            color = site,
@@ -195,12 +196,17 @@ gg.ts.plot2 <- ggplot(data = gg.ts2,
   ylab("Temperature (C)")+
   ylim(9,19)+
   theme_classic()
-gg.ts.plot2
+rmo.ts.plot2
+```
+Plots of Gribble Gap timeseries- first with AirT, second without AirT ~700 m  
+
+```{r, echo = FALSE,fig.width=12, fig.height=4, warning=FALSE, message=FALSE}
+
 ```
 
 Plots of diff between downstream and head vs air- sort of like contour lines, the closer the lines are together the denser the points would be- just having points didn't display these relationships very well
 
-Gribble Gap  
+Gribble Gap ~700m  
 ```{r, warning=FALSE, message=FALSE}
 #make data frames with differences
 #easiest way I could devise was by using the wide/spread data
@@ -243,7 +249,9 @@ gg.diff.plot <- ggplot(data = gg.tall.diffs,
   theme_classic()
 gg.diff.plot
 ```
-Long Branch diff plot  
+
+Long Branch diff plot ~ 850 m  
+  
 ```{r, echo = FALSE, warning=FALSE, message=FALSE}
 #ulb
 ulb.diff.plot <- ggplot(data = ulb.tall.diffs, 
@@ -287,18 +295,22 @@ mul.diff.plot <- ggplot(data = mul.tall.diffs,
   theme_classic()
 
 ```
-Moses Creek diff plot  
+  
+  
+Moses Creek diff plot ~ 1300 m  
+  
 ```{r,echo = FALSE, warning=FALSE, message=FALSE}
 rmo.diff.plot
 ```
-Mull Creek diff plot  
+  
+Mull Creek diff plot~ 1600 m  
+  
 ```{r,  echo = FALSE, warning=FALSE, message=FALSE}
 mul.diff.plot
 ```
-Mull Creek diff plot  
 
 Ridge plots with head and C- show distribution of temperature, similar to a box plot
-Long Branch temp distributions  
+Long Branch temp distributions ~ 850 m   
 ```{r, warning=FALSE, message=FALSE}
 ulb.r <- c("ULB2HA", "ULB2CB","ULB3HA", "ULB3CB", "ULB4HA", "ULB4CA")
 #subset master dataset
@@ -329,7 +341,7 @@ ulb.ridge <- ggplot()+
 ulb.ridge
 ```
 
-Moses Creek Temp distributions  
+Moses Creek Temp distributions ~ 1300 m  
 ```{r, echo = FALSE, warning=FALSE, message=FALSE}
 #ULB
 #rmo
@@ -408,11 +420,11 @@ gg.ridge <- ggplot()+
                              "GC100"="Downstream (GC)"))+
   xlab("Temp (C)")
 ```
-Mull Creek temp distributions  
+Mull Creek temp distributions ~ 1600 m  
 ```{r, echo = FALSE, warning=FALSE, message=FALSE}
 mul.ridge
 ```
-Gribble Gap temp distributions  
+Gribble Gap temp distributions ~700 m  
 ```{r, echo = FALSE, warning=FALSE, message=FALSE}
 gg.ridge
 ```
