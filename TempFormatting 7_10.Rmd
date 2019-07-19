@@ -736,3 +736,42 @@ ggsave("gg.ts.png", plot = gg.ts.plot, width = 8, height = 5, units = c("in"))
 
 ```
 
+```{r}
+#making a plot for the condensed slide
+#formatting time to beginning and end of deployment period
+start <- mdy_hm("6-25-19 12:10")
+end <- mdy_hm("7-5-19 12:10")
+timeseries <- filter(master, rnd.dates >= start)
+timeseries <- filter(master, rnd.dates <= end)
+
+slide.ts <- c("ULB4HA", "MUL7HB", "ULB4CA", "MUL7CA")
+
+timeseries <- timeseries %>% filter(site %in% slide.ts)
+timeseries$site <- gsub('.{1}$', '', timeseries$site)
+
+slide.ts <- timeseries
+
+#ulb
+slide.ts.plot <- ggplot(data = slide.ts)+
+  geom_line(aes(x = rnd.dates,
+                y = Value,
+                
+                color = shed,
+                linetype = type), 
+            size = 1.5)+
+   scale_color_manual(values = c("ULB" = "midnightblue", "MUL" = "firebrick1"),
+                      name = "")+
+  scale_linetype_manual(values=c("solid", "dotted"),
+                        name = "Location",
+                        labels = c("Head", "Downstream"))+
+  xlab( " ")+
+  ylab("Temperature (C)")+
+  ylim(9, 19)+
+  theme_classic()+
+  theme(text= element_text(size=17),
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))
+slide.ts.plot
+ggsave("slide.ts.png", plot = slide.ts.plot, width = 8, height = 4, units = c("in"))
+
+```
