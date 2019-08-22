@@ -1,0 +1,85 @@
+---
+title: "cold calibration attempt 8_22"
+output: pdf_document
+---
+8/22  
+Christa wanted to see the calibration data, I am going to try to work it up real quick.  
+I am going to adapt the code from TempFormatting 7_10.Rmd in order to read in the data and format it in a way that I can use.
+
+```{r}
+#Packages
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(ggridges)
+library(lubridate)
+library(SAVER)
+```
+
+```{r}
+#read in all the csv files
+#removed 15- ULB4HB- super messed up, sensor was broken
+files <- list.files(path = "Temp data 7_9_19 raw/")
+sites <- read.csv("site_temps_7_11.csv", header = T, sep = ",")
+    sites$f.col.time <- mdy_hm(sites$collection.time)
+    sites$f.dep.time <- mdy_hm(sites$deploy.time)
+
+for (i in 1:length(files)) {
+    data <- read.csv(paste0("Temp data 7_9_19 raw/",
+                            files[i]), 
+                     skip = 19, 
+                     header = T, sep = ",")
+    #formatting time
+    data$fdates <- mdy_hms(data$Date.Time)
+    #making a column with sensor number
+    data$sensor <- files[i]
+    data$sensor <- gsub("data","\\1", data$sensor)
+    data$sensor <- gsub(".csv","\\1", data$sensor)
+    #making column with site loc
+    #round temperatures to nearest tenth
+    data$rnd.dates <- round_date(data$fdates, "10 minutes")
+  
+  if(i == 1)alldat <- data                 
+  if(i > 1)alldat <- rbind(alldat, data)
+}
+#f
+```
+
+Format the data to work with.
+```{r}
+#formatting data to remove undeployed sensors
+
+#finding ones that weren't deployed
+data.sensors <- unique(alldat$sensor)
+sites.sensors <- unique(sites$sensor)
+diff <- setdiff(data.sensors, sites.sensors)
+#removing sensors that weren't deployed
+alldat <- filter(alldat, sensor %in% sites$sensor)
+#add site location column
+alldat$sensor <- as.numeric(alldat$sensor)
+#removed sensor 54- something wrong
+#alldat2 <- filter(alldat, sensor != 54)
+#adding sites data sheet- matching sensors with sites
+alldat2 <- inner_join(alldat, sites, by = "sensor")
+#identify list of sites
+locs <- unique(alldat2$site)
+
+#formatting time to beginning and end of deployment period
+start <- mdy_hm("6-13-19 13:10")
+end <- mdy_hm("7-8-19 11:20")
+alldat3 <- filter(alldat2, rnd.dates >= start)
+alldat3 <- filter(alldat3, rnd.dates <= end)
+
+master <- select(alldat3, Value, sensor, rnd.dates, site, type, shed)
+#replacing wacky temps with NA
+which(master$Value == -41, arr.ind = T)
+master$Value[74005] <- NA
+master$Value[which(master$Value > 35, arr.ind = T)] <- NA
+#setting everything below 0 = NA, it didn't get below 0
+master$Value[which(master$Value < 0, arr.ind = T)] <- NA
+#remove LS180A and W600A
+
+master$rnd.dates <- as.POSIXct(master$rnd.dates, format = "%Y-%M-%d %H:%M:%S")
+
+#write.csv(master, file = "Formatted.temps.tall_7_17.csv")
+```
