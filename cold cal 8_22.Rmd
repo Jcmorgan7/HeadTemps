@@ -6,6 +6,8 @@ output: pdf_document
 Christa wanted to see the calibration data, I am going to try to work it up real quick.  
 I am going to adapt the code from TempFormatting 7_10.Rmd in order to read in the data and format it in a way that I can use.
 
+8/27 
+Resumed working on compiling this data for Christa
 ```{r}
 #Packages
 library(tidyr)
@@ -19,16 +21,17 @@ library(SAVER)
 ```{r}
 #read in all the csv files
 #removed 15- ULB4HB- super messed up, sensor was broken
-files <- list.files(path = "Temp data 7_9_19 raw/")
+files <- list.files(path = "Ibutton calibration data 6_4_19/")
 sites <- read.csv("site_temps_7_11.csv", header = T, sep = ",")
-    sites$f.col.time <- mdy_hm(sites$collection.time)
-    sites$f.dep.time <- mdy_hm(sites$deploy.time)
 
 for (i in 1:length(files)) {
-    data <- read.csv(paste0("Temp data 7_9_19 raw/",
+    data <- read.csv(paste0("Ibutton calibration data 6_4_19/",
                             files[i]), 
                      skip = 19, 
                      header = T, sep = ",")
+    if(i == 1)alldat <- data
+    if(i > 1)alldat <- rbind(alldat, data)
+}
     #formatting time
     data$fdates <- mdy_hms(data$Date.Time)
     #making a column with sensor number
@@ -37,11 +40,9 @@ for (i in 1:length(files)) {
     data$sensor <- gsub(".csv","\\1", data$sensor)
     #making column with site loc
     #round temperatures to nearest tenth
-    data$rnd.dates <- round_date(data$fdates, "10 minutes")
+    data$rnd.dates <- round_date(data$fdates, unit = "minute")
   
-  if(i == 1)alldat <- data                 
-  if(i > 1)alldat <- rbind(alldat, data)
-}
+  
 #f
 ```
 

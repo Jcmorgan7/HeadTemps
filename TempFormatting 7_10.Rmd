@@ -92,7 +92,7 @@ master$Value[which(master$Value < 0, arr.ind = T)] <- NA
 
 master$rnd.dates <- as.POSIXct(master$rnd.dates, format = "%Y-%M-%d %H:%M:%S")
 
-write.csv(master, file = "Formatted.temps.tall_7_17.csv")
+#write.csv(master, file = "Formatted.temps.tall_7_17.csv")
 ```
 
 Before I can plot, I have to subset the data in ways that I want it all plotted
@@ -759,19 +759,96 @@ slide.ts.plot <- ggplot(data = slide.ts)+
                 color = shed,
                 linetype = type), 
             size = 1.5)+
-   scale_color_manual(values = c("ULB" = "midnightblue", "MUL" = "firebrick1"),
-                      name = "")+
+   scale_color_manual(values = c("MUL" = "firebrick1","ULB" = "midnightblue"),
+                      name = "Site",
+                      labels = c("High Elevation", "Low Elevation"))+
   scale_linetype_manual(values=c("solid", "dotted"),
                         name = "Location",
-                        labels = c("Head", "Downstream"))+
+                        labels = c("Downstream", "Head"))+
   xlab( " ")+
   ylab("Temperature (C)")+
   ylim(9, 19)+
   theme_classic()+
   theme(text= element_text(size=17),
         axis.text.x = element_text(size = 17),
-        axis.text.y = element_text(size = 17))
+        axis.text.y = element_text(size = 17),
+        panel.background = element_rect(fill = "transparent"), # bg of the panel
+        plot.background = element_rect(fill = "transparent", color = NA), # bg of the 
+        legend.background = element_rect(fill = "transparent"), # get rid of legend 
+       )
 slide.ts.plot
-ggsave("slide.ts.png", plot = slide.ts.plot, width = 8, height = 4, units = c("in"))
+ggsave("slide.ts.png", 
+       plot = slide.ts.plot, 
+       width = 11, height = 4, 
+       units = c("in"),
+       bg = "transparent")
 
 ```
+
+New plot for condensed slide, plotting airT vs headT and downstreamT
+```{r}
+ulb.diffs <- data.frame("ULB2"= ULB2CA - ULB2HA,
+                        "ULB3"= ULB3CA - ULB3HA,
+                        "ULB4"= ULB4CA - ULB4HA,
+                        "ULBAir" = ULBAir)
+mul.diffs <- data.frame(
+  "MUL2" = MUL2CA - MUL2HA,
+  "MUL4" = MUL4CA - MUL4HB,
+  "MUL7" = MUL7CA - MUL7HB,
+  "MULAir" = MULAir)
+
+ulb.tall.diffs <- ulb.diffs %>% gather(site, temp, -ULBAir)
+
+gg.diff.plot <- ggplot(data = gg.tall.diffs, 
+                       aes(x = GGAir,
+                           y = temp,
+                           color = site))+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  stat_density2d(size = 2)+
+  xlim(10, 28)+
+  ylim(0,5)+
+  ylab("Downstream Temp - Head Temp (C)")+
+  xlab("Air Temperature (C)")+
+  theme_classic()+
+  theme(text= element_text(size=17))
+gg.diff.plot
+
+
+slide.rel <- c("ULB4HA", "MUL7HB", "ULB4CA", "MUL7CA")
+
+relations <- master %>% filter(site %in% slide.rel)
+relations$site <- gsub('.{1}$', '', relations$site)
+
+slide.rel.plot <- ggplot(data = slide.rel)+
+  geom_point(aes(x = rnd.dates,
+                y = Value,
+                
+                color = shed,
+                linetype = type), 
+            size = 1.5)+
+   scale_color_manual(values = c("MUL" = "firebrick1","ULB" = "midnightblue"),
+                      name = "Site",
+                      labels = c("High Elevation", "Low Elevation"))+
+  scale_linetype_manual(values=c("solid", "dotted"),
+                        name = "Location",
+                        labels = c("Downstream", "Head"))+
+  xlab( " ")+
+  ylab("Temperature (C)")+
+  ylim(9, 19)+
+  theme_classic()+
+  theme(text= element_text(size=17),
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17),
+        panel.background = element_rect(fill = "transparent"), # bg of the panel
+        plot.background = element_rect(fill = "transparent", color = NA), # bg of the 
+        legend.background = element_rect(fill = "transparent"), # get rid of legend 
+       )
+slide.ts.plot
+ggsave("slide.ts.png", 
+       plot = slide.ts.plot, 
+       width = 8, height = 4, 
+       units = c("in"),
+       bg = "transparent")
+```
+
