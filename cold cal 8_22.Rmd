@@ -18,35 +18,52 @@ library(lubridate)
 library(SAVER)
 ```
 
+Deleted 5, 15, and set 144 and 137 to NA
 ```{r}
 #read in all the csv files
 #removed 15- ULB4HB- super messed up, sensor was broken
 files <- list.files(path = "Ibutton calibration data 6_4_19/")
 sites <- read.csv("site_temps_7_11.csv", header = T, sep = ",")
 
-for (i in 1:length(files)) {
-    data <- read.csv(paste0("Ibutton calibration data 6_4_19/",
-                            files[i]), 
+for (y in 2:length(files)) {
+    data <- read.csv(paste0("Ibutton calibration data 6_4_19/", files[y]), 
                      skip = 19, 
                      header = T, sep = ",")
-    if(i == 1)alldat <- data
-    if(i > 1)alldat <- rbind(alldat, data)
-}
-    #formatting time
     data$fdates <- mdy_hms(data$Date.Time)
-    #making a column with sensor number
-    data$sensor <- files[i]
-    data$sensor <- gsub("data","\\1", data$sensor)
-    data$sensor <- gsub(".csv","\\1", data$sensor)
-    #making column with site loc
-    #round temperatures to nearest tenth
     data$rnd.dates <- round_date(data$fdates, unit = "minute")
-  
-  
-#f
+    data$sensor <- files[y]
+    #data$sensor <- gsub("data","\\1", data$sensor)
+    data$sensor <- gsub(".csv","\\1", data$sensor)
+    if(y == 2)alldat <- data
+    if(y > 2)alldat <- rbind(alldat, data)
+}
+
+cal <- select(alldat, rnd.dates, Value, sensor)
+#cal$Value[which(cal$sensor == c("144", "137", "5"))] <- NA
+
+start <- mdy_hm("6-04-19 17:30")
+end <- mdy_hm("6-04-19 18:00")
+cal <- filter(cal, rnd.dates >= start)
+cal <- filter(cal, rnd.dates <= end)
+
+raw <- ggplot(data = cal)+
+  geom_line(aes(x = rnd.dates, y = Value,
+                color = sensor))
+#adding thermometer readings
+cal.spread <- cal %>% spread(sensor, value = Value)
+cal.spread$control <- c(0.1,0.2,0.1,0.2,0.2,0.2,0.2,0.3,0.2,0.2,
+                        0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+                        0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.3)
+cal.tall <- cal.spread %>% gather(sensor, Value, -rnd.dates)
+
+#creating a column of the diff between the control and every number
+cal2 <- cal.tall %>% group_by(sensor) %>% mutate(Value - 0.2)
+#saving data as csv
+#write.csv(master.mean, file = "temps.means.csv")
 ```
 
-Format the data to work with.
+
+Format the data to work with- from summer deployment code
 ```{r}
 #formatting data to remove undeployed sensors
 
