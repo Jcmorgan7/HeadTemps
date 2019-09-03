@@ -1,0 +1,50 @@
+---
+title: "Further Analysis 9_3"
+output: html_document
+---
+
+9/3
+Goal is to conduct further analysis discussed in July with JP and Christa, also want to work with the data and get familiar with the numbers. 
+
+```{r}
+#Reading in old output csv, fully formatted and edited
+temps <- read.csv("Formatted.temps.tall_7_17.csv")
+#format time
+temps$rnd.dates <- ymd_hms(temps$rnd.dates)
+
+temps <- temps %>% mutate(day = day(rnd.dates))
+temps <- temps %>% mutate(month = month(rnd.dates))
+#making data frame to number the unique days- 1-26
+day <- unique(temps$day)
+do <- seq(1,26,1)
+undo <- data.frame(day, do)
+#number unique days
+temps <- inner_join(temps, undo, by = "day")
+#making data frame to number unique hours
+temps <- temps %>% mutate(hour = floor_date(rnd.dates, "hour"))
+
+
+#calculation daily mean, min, max, sd
+temps <- temps %>% group_by(do) %>% mutate(d.mean = mean(Value), 
+                                           d.min = min(Value),
+                                           d.max = max(Value),
+                                           d.sd = sd(Value))
+ungroup(temps)
+#calculating hourly mean, min, max, sd
+temps <- temps %>% group_by(hour) %>% mutate(h.mean = mean(Value),
+                                             h.min = min(Value),
+                                             h.max = max(Value),
+                                             h.sd = sd(Value))
+ungroup(temps)
+```
+
+Successfully calculated metrics, now going to plot em
+```{r}
+daily <- ggplot(data = temps)+
+  geom_line(aes(x = rnd.dates, 
+                y = Value,
+                color = sensor))+
+  theme_classic()
+daily
+```
+
