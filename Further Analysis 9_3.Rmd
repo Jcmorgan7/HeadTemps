@@ -6,6 +6,29 @@ output: html_document
 9/3
 Goal is to conduct further analysis discussed in July with JP and Christa, also want to work with the data and get familiar with the numbers. 
 
+9/5
+Thought that I succeeded before, but it would appear I did not- something wrong with the calculated values- won't plot, I think there is something wrong with how I tried to calculate the data metrics
+```{r global_options, include=FALSE}
+#global settings
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+#Packages
+library(tidyverse)
+```
+
+Using Tibbles
+```{r}
+#printing more than tibble does by default
+temps %>% print(n = 10, width = Inf)
+#changes tibble printing defaults
+#print all rows
+#options(tibble.print_min = Inf)
+#print all columns
+options(tibble.width = Inf)
+```
+
 ```{r}
 #Reading in old output csv, fully formatted and edited
 temps <- read.csv("Formatted.temps.tall_7_17.csv")
@@ -25,10 +48,12 @@ temps <- temps %>% mutate(hour = floor_date(rnd.dates, "hour"))
 
 
 #calculation daily mean, min, max, sd
-temps <- temps %>% group_by(do) %>% mutate(d.mean = mean(Value), 
-                                           d.min = min(Value),
-                                           d.max = max(Value),
-                                           d.sd = sd(Value))
+temps <- temps %>% group_by(do) %>% mutate(d.mean = mean(Value, na.rm = TRUE))
+                                           
+                                    
+                                           d.min = min(Value, na.rm = TRUE),
+                                           d.max = max(Value, na.rm = TRUE),
+                                           d.sd = sd(Value, na.rm = TRUE))
 ungroup(temps)
 #calculating hourly mean, min, max, sd
 temps <- temps %>% group_by(hour) %>% mutate(h.mean = mean(Value),
@@ -36,15 +61,48 @@ temps <- temps %>% group_by(hour) %>% mutate(h.mean = mean(Value),
                                              h.max = max(Value),
                                              h.sd = sd(Value))
 ungroup(temps)
+
+temps <- temps %>% mutate_each(list(as.factor), sensor)
+
+#making sure my data stuff worked- I don't think it did
+test <- temps %>% filter(sensor == c("130", "78"))
+write.csv(test, file = "test9_5.csv")
 ```
 
 Successfully calculated metrics, now going to plot em
 ```{r}
-daily <- ggplot(data = temps)+
+daily <- ggplot(data = test)+
   geom_line(aes(x = rnd.dates, 
-                y = Value,
+                y = d.mean,
                 color = sensor))+
   theme_classic()
 daily
+
+daily2 <- ggplot()
+```
+
+Previous effort failed, trying to subset a different way- do each sensor individually, then combine them after calculating the mean and other metrics
+```{r}
+#Reading in old output csv, fully formatted and edited
+raw <- read.csv("Formatted.temps.tall_7_17.csv")
+raw$rnd.dates <- ymd_hms(raw$rnd.dates)
+raw <- raw %>% mutate_each(list(as.factor), sensor)
+
+one.three.zero <- raw %>% filter(sensor == "130")
+seventy.eight <- raw %>% filter(sensor == "78")
+
+seventy.eight <- seventy.eight %>% mutate(day = day(rnd.dates))
+seventy.eight <- as_tibble(seventy.eight)
+seventy.eight <- seventy.eight %>% 
+  group_by(day) %>% 
+  mutate(d.mean = mean(Value, na.rm = TRUE))
+
+one.three.zero <- one.three.zero %>% mutate(day = day(rnd.dates))
+one.three.zero <- as_tibble(one.three.zero)
+one.three.zero <- one.three.zero %>% 
+  group_by(day) %>% 
+  mutate(d.mean = mean(Value, na.rm = TRUE))
+
+test <- bind_rows(seventy.eight, one.three.zero)
 ```
 
