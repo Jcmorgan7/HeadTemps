@@ -31,7 +31,14 @@ options(tibble.width = Inf)
 
 ```{r}
 #Reading in old output csv, fully formatted and edited
-temps <- read.csv("Formatted.temps.tall_7_17.csv")
+temps <- read_csv("Formatted.temps.tall_7_17.csv")
+                  
+                  
+                  col_types = cols(
+                    X = NULL, 
+                    sensor = col_factor(),
+                    rnd.dates = col_datetime(format = ymd_hms)
+                  ))
 #format time
 temps$rnd.dates <- ymd_hms(temps$rnd.dates)
 
@@ -104,5 +111,30 @@ one.three.zero <- one.three.zero %>%
   mutate(d.mean = mean(Value, na.rm = TRUE))
 
 test <- bind_rows(seventy.eight, one.three.zero)
+```
+
+Going to try it again- using the old method but with some new consideration on how data should be formatted
+```{r}
+temps <- read_csv("Formatted.temps.tall_7_17.csv")
+temps <- temps %>% mutate_each(list(as.factor), sensor)
+#re ordering the variables to make them tidy
+yeti <- temps %>% select(site, sensor, shed, type, Value, rnd.dates)
+
+groo <- yeti %>% filter(shed == "ULB", site != "ULBAir")
+
+groop <- ggplot(groo)+
+  geom_line(aes(x = rnd.dates,
+                y = Value,
+                color = site))+
+  theme_classic()
+
+goons <- yeti %>% 
+  group_by(site, day = day(rnd.dates))
+
+sum.goons <- goons %>% 
+  summarise(d.mean = mean(Value, na.rm = TRUE))
+
+stick <- inner_join(yeti, sum.goons, by = "site")
+
 ```
 
