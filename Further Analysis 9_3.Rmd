@@ -134,7 +134,76 @@ goons <- yeti %>%
 sum.goons <- goons %>% 
   summarise(d.mean = mean(Value, na.rm = TRUE))
 
-stick <- inner_join(yeti, sum.goons, by = "site")
+sum.goons.1 <- sum.goons %>% select(site, day)
+sum.goons.2 <- sum.goons %>% select(site, d.mean)
 
+ungroup(goons)
+ungroup(sum.goons.1)
+#this works!!
+goons2 <- semi_join(goons, sum.goons.1, by = "site")
+#this works even better!
+goons3 <- left_join(goons, sum.goons, by = c("site", "day"))
+
+stick <- inner_join(yeti, sum.goons, by = "site")
+goose <- left_join(yeti, sum.goons, by = "site")
+
+sticky <- ggplot(data = stick)+
+  geom_line(aes(x = day,
+                y = d.mean,
+                color = site))
+
+```
+
+9/10
+I believe I am having great success- going to finally make the finalized table, and then try to subset and graph some stuff
+```{r}
+temps <- read_csv("Formatted.temps.tall_7_17.csv")
+temps <- temps %>% mutate_each(list(as.factor), sensor)
+#re ordering the variables to make them tidy
+yeti <- temps %>% select(site, sensor, shed, type, Value, rnd.dates)
+#omitting missing values
+yeti <- na.omit(yeti)
+#adding a day column
+goons <- yeti %>% 
+  group_by(site, day = day(rnd.dates))
+#making summary of each day
+sum.goons <- goons %>% 
+  summarise(d.mean = mean(Value), 
+            d.min = min(Value),
+            d.max = max(Value),
+            d.sd = sd(Value))
+#unsure if these are needed
+ungroup(goons)
+ungroup(sum.goons.1)
+#adding summary table to temps
+goons3 <- left_join(goons, sum.goons, by = c("site", "day"))
+#successfully made a table with daily metrics
+```
+
+I need to reformat my data again- changing the names so that I can plot all of them simultaneously much more easily
+```{r}
+
+```
+
+
+Making plots using daily metrics table
+```{r}
+day <- goons3
+
+sheds <- c("ULB", "GG", "RMO", "MUL")
+ULB.day <- filter(day, shed == "ULB")
+GG.day <- filter(day, shed == "GG")
+RMO.day <- filter(day, shed == "RMO")
+MUL.day <- filter(day, shed == "MUL")
+
+par(mfrow = c(2,2))
+for (i in 1:length(sheds)) {
+  f <- filter(day, shed == sheds[i])  
+  plot <- ggplot(data = f)+
+    geom_line(aes(x = rnd.dates,
+                  y = d.mean,
+                  color = site))
+  print(plot)
+}
 ```
 
