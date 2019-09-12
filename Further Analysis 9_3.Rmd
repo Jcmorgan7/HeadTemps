@@ -161,9 +161,19 @@ temps <- read_csv("Formatted.temps.tall_7_17.csv")
 temps <- temps %>% mutate_each(list(as.factor), sensor)
 #re ordering the variables to make them tidy
 yeti <- temps %>% select(site, sensor, shed, type, Value, rnd.dates)
+
+#adding a day column
+
+yeti <- yeti
+yeti$numb <- str_sub(yeti$site, 4, 5)
+yeti$A.B <- str_sub(yeti$site, 6, 6)
+yeti <- select(yeti, site, sensor, shed, type, numb, A.B, Value, rnd.dates)
+#only use numb and A.B variables if not working with air temps- only useful for plotting and subsetting stream sites
+yeti <- yeti %>% mutate_each(list(as.character), numb)
+
 #omitting missing values
 yeti <- na.omit(yeti)
-#adding a day column
+
 goons <- yeti %>% 
   group_by(site, day = day(rnd.dates))
 #making summary of each day
@@ -180,29 +190,24 @@ goons3 <- left_join(goons, sum.goons, by = c("site", "day"))
 #successfully made a table with daily metrics
 ```
 
-I need to reformat my data again- changing the names so that I can plot all of them simultaneously much more easily
-```{r}
-
-```
-
-
 Making plots using daily metrics table
 ```{r}
 day <- goons3
 
 sheds <- c("ULB", "GG", "RMO", "MUL")
-ULB.day <- filter(day, shed == "ULB")
-GG.day <- filter(day, shed == "GG")
-RMO.day <- filter(day, shed == "RMO")
-MUL.day <- filter(day, shed == "MUL")
+ULB.day <- filter(day, shed == "ULB", type != "air")
+GG.day <- filter(day, shed == "GG", type != "air")
+RMO.day <- filter(day, shed == "RMO", type != "air")
+MUL.day <- filter(day, shed == "MUL", type != "air")
 
-par(mfrow = c(2,2))
 for (i in 1:length(sheds)) {
-  f <- filter(day, shed == sheds[i])  
+  f <- filter(day, shed == sheds[i], type != "air")  
   plot <- ggplot(data = f)+
-    geom_line(aes(x = rnd.dates,
+    geom_point(aes(x = d.min,
                   y = d.mean,
-                  color = site))
+                  color = site,
+                  shape = type
+                  ))
   print(plot)
 }
 ```
