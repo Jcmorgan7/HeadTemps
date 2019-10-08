@@ -16,6 +16,7 @@ knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
 ```{r}
 #Packages
 library(tidyverse)
+library(lubridate)
 ```
 
 Using Tibbles
@@ -34,11 +35,7 @@ options(tibble.width = Inf)
 temps <- read_csv("Formatted.temps.tall_7_17.csv")
                   
                   
-                  col_types = cols(
-                    X = NULL, 
-                    sensor = col_factor(),
-                    rnd.dates = col_datetime(format = ymd_hms)
-                  ))
+                 
 #format time
 temps$rnd.dates <- ymd_hms(temps$rnd.dates)
 
@@ -188,6 +185,9 @@ ungroup(sum.goons.1)
 #adding summary table to temps
 goons3 <- left_join(goons, sum.goons, by = c("site", "day"))
 #successfully made a table with daily metrics
+#save table
+#write.csv(goons3, file = "Tempswithdmetrics10_3.csv")
+
 ```
 
 Making plots using daily metrics table
@@ -203,12 +203,52 @@ MUL.day <- filter(day, shed == "MUL", type != "air")
 for (i in 1:length(sheds)) {
   f <- filter(day, shed == sheds[i], type != "air")  
   plot <- ggplot(data = f)+
-    geom_point(aes(x = d.min,
+    geom_point(aes(x = d.max - d.min,
                   y = d.mean,
                   color = site,
                   shape = type
                   ))
+    #xlim(8,25)+
+    #ylim(8,25)
   print(plot)
 }
+```
+
+9/12
+I am going to try to produce some good plots, based on the code that I was working on the 10th
+```{r}
+ulb.r <- c("ULB2HA", "ULB2CB","ULB3HA", "ULB3CB", "ULB4HA", "ULB4CA")
+rmo.r <- c("RMO1HA", "RMO1CB", "RMO2HA", "RMO2CB", "RMO3HB", "RMO3CB")
+mul.r <- c("MUL2HA", "MUL2CB", "MUL4HB", "MUL4CA", "MUL7HB", "MUL7CA") 
+gg.r <- c("W600B", "W400A", "GC300B","GC100B", "LS180B", "LS0B")
+air.r <- c("MULAir", "GGAir", "ULBAir", "RMOAir")
+sites <- c(ulb.r, rmo.r, mul.r, gg.r, air.r)
+
+day <- filter(goons3, site %in% sites)
+
+ULB.a <- filter(day, shed == "ULB")
+ULB.w <- filter(day, shed == "ULB", type != "air")
+GG.a <- filter(day, shed == "GG")
+GG.w <- filter(day, shed == "GG", type != "air")
+RMO.a <- filter(day, shed == "RMO")
+RMO.w <- filter(day, shed == "RMO", type != "air")
+MUL.a <- filter(day, shed == "MUL")
+MUL.w <- filter(day, shed == "MUL", type != "air")
+fils <- c(ULB.day, GG.day, RMO.day, MUL.day)
+
+plot <- ggplot(data = ULB.a)+
+    geom_line(aes(x = rnd.dates,
+                  y = d.max,
+                  color = site,
+                  shape = type
+                  ))+
+  geom_line(aes(x = rnd.dates,
+                  y = d.min,
+                  color = site,
+                  shape = type
+                  ))
+  print(plot)
+  
+#plot 
 ```
 

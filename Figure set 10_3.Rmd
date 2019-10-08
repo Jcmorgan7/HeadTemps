@@ -1,0 +1,24 @@
+---
+title: "Figure set 10_3"
+output: html_document
+---
+10/4
+Make plots with topo metrics, make final figure set to send to JP
+
+```{r global_options, include=FALSE}
+#global settings
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+#Packages
+library(tidyverse)
+library(lubridate)
+```
+
+```{r}
+topo <- read.csv("topodata 10_4.csv")
+temps <- read.csv("Tempswithdmetrics10_3.csv")
+
+```
+
