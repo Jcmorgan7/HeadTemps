@@ -18,53 +18,6 @@ library(ggridges)
 ```
 
 ```{r}
-#read in data
-topo <- read.csv("topodata 10_4.csv")
-topo.og <- read.csv("topodata 10_4.csv")
-
-temps <- read.csv("Tempswithdmetrics10_3.csv")
-#format time and other stuff
-temps$rnd.dates <- ymd_hms(temps$rnd.dates)
-temps <- temps %>% mutate_each(list(as.factor), sensor)
-temps <- temps %>% mutate_each(list(as.character), site, type, shed)
-topo <- topo %>% mutate_each(list(as.character), Site, type, Shed)
-
-#change some of the col names and how I have the sites named
-#remove airT
-temps.water <- filter(temps, type != "air")
-temps.water$site <- gsub('.{2}$', '', temps.water$site)
-temps.water <- temps.water %>%
-  mutate(type = replace(type, type != "head", "Downstream"),
-         type = replace(type, type == "head", "Head"),
-         site = replace(site, site == c("W60", "W40", "GC30", "GC10", "LS18", "LS"),
-                              c("W600", "W400", "GC300", "GC100", "LS180", "LS0")))
-temps.water <- temps.water %>%
-  mutate(type = replace(type, type == "head", "Head"))
-topo <- topo %>%
-  mutate(type = replace(type, type == "Down", "Downstream"))
-
-#selecting sites, renaming one of the columns in the same function
-topo <- topo %>% 
-  select(Site, type, Slope..percent.rise., Elevation..ft., UAA..ft2.) %>% 
-  rename(site = Site)
-#combine the datasets by Site and type
-comb <- left_join(temps.water, topo, by = c("site", "type"))
-```
-  
-```{r}
-test <- select(comb, site, type, Elevation..ft.)
-test <- distinct(test)
-
-as_tibble() %>% distinct() %>% select(temps, site)
-select(temps, site, type, A.B) %>% distinct() %>% as_tibble()
-
-###SUPER USEFUL
-select(temps.water, site, type, A.B) %>% distinct()
-
-```
-
-
-```{r}
 #I need to make a data sheet that has one sensor per site
 #in order to pull of the plots I want to make
 temps <- read.csv("Tempswithdmetrics10_3.csv")
@@ -136,40 +89,94 @@ elevator.ridge <- ggplot(data = comb,
   scale_y_discrete(expand = c(0.001, 0))+
   scale_x_continuous(limits = c(8,20), expand = c(0.001, 0))+
   xlab("Temp (C)")
-
+elevators
+elevator.ridge
 ```
 
 Air temp plots
 ```{r}
 #Before I can plot airT stuff I need to get some kind of AirT data into my df
 #comine datasets by time and shed
-temps.water <- filter(temps, type == "air")
+temps.air <- filter(temps, type == "air")
 
+temps.air <- temps.air %>% mutate_each(list(as.character), site, type, shed)
+temps.air <- temps.air %>% 
+  select(shed, Value, rnd.dates, d.mean, d.min, d.max, d.sd) %>% 
+  rename(airT = Value, air.d.mean = d.mean, air.d.min = d.min, air.d.max = d.max, air.d.sd = d.sd)
+
+#brush is the new master datasheet
+brush <- left_join(comb, temps.air, by = c("shed", "rnd.dates"))
+
+#making summary df
+presump <- brush %>% select(-X, -sensor, -shed, -day, -numb, -A.B, -rnd.dates)
+shed.presump <- brush %>% select(site, shed) %>% distinct()
+
+sump <- presump %>% group_by(site, type) %>% summarise_each(list(mean))
+ungroup(sump)
+
+sump <- left_join(sump, shed.presump, by = c("site"))
 ```
 
 ```{r}
-#by AirT
-elevators <- ggplot(data = comb, 
-                    aes(x = fct_reorder(site, Elevation..ft.),
-                        y = Value,
-                        fill = type))+
-  geom_boxplot()
-
-elevator.ridge <- ggplot(data = comb,
-                         aes(x = Value,
-                             y = site,
-                             fill = type))+
-  geom_density_ridges2(mapping = aes(scale=1))+
+#plots with sump
+#plotting uaa vs avg water T
+drain <- ggplot(sump, aes(x = UAA..ft2.,
+                           y = Value,
+                           color = shed,
+                           ))+
+  geom_point(aes(shape = type), size = 4)+
+  geom_smooth(method = 'lm', se = FALSE)+
   theme_classic()+
-  theme(axis.title.y=element_blank(),
-        axis.title.x=element_text(size = 17),
-        axis.ticks.y=element_blank(),
-        strip.text.y = element_text(angle = 180, hjust = 1),
-        line = element_blank(),
-        axis.text.x = element_text(size = 17),
-        axis.text.y = element_text(size = 17))+
-  scale_y_discrete(expand = c(0.001, 0))+
-  scale_x_continuous(limits = c(8,20), expand = c(0.001, 0))+
-  xlab("Temp (C)")
+  scale_color_brewer(palette = "Dark2")+
+  labs(x = "Drainage Area (ft^2)",
+       y = "Average WaterT (C)")
+drain
+```
+
+```{r}
+#plotting slope vs avg water T
+steep <- ggplot(sump, aes(x = Slope..percent.rise.,
+                          y = Value,
+                          color = shed))+
+  geom_point(aes(shape = type), size = 4)+
+  geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  scale_color_brewer(palette = "Dark2")+
+  labs(x = "Slope (%)",
+       y = "Average WaterT (C)")
+steep
+```
+
+```{r}
+#airT vs WaterT
+brush.h <- filter(brush, type == "Head")
+heady <- ggplot(brush.h, aes(x = airT,
+                          y = Value,
+                          color = shed))+
+  geom_point(size = 1,
+             alpha = 0.25)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  scale_color_brewer(palette = "Dark2")+
+  labs(x = "Average airT (C)",
+       y = "Average WaterT (C)",
+       title = "Head sites")
+
+#downstream sites
+brush.d <- filter(brush, type == "Downstream")
+downy <- ggplot(brush.d, aes(x = airT,
+                          y = Value,
+                          color = shed))+
+  geom_point(size = 1,
+             alpha = 0.25)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  scale_color_brewer(palette = "Dark2")+
+  labs(x = "Average airT (C)",
+       y = "Average WaterT (C)",
+       title = "Downstream sites")
+
+downy
+heady
 ```
 
