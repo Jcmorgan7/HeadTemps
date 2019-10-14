@@ -1,9 +1,11 @@
 ---
 title: "Figure set 10_3"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 10/4
-Make plots with topo metrics, make final figure set to send to JP
+Make plots with topo metrics, make final figure set to send to JP  
 
 ```{r global_options, include=FALSE}
 #global settings
@@ -63,7 +65,8 @@ topo <- topo %>%
 comb <- left_join(temps.water, topo, by = c("site", "type"))
 ```
 
-Plot time
+Plot time  
+Temperatures vary with Elevation  
 ```{r}
 #making plots
 #Elevation vs distribution
@@ -71,6 +74,9 @@ elevators <- ggplot(data = comb,
                     aes(x = fct_reorder(site, Elevation..ft.),
                         y = Value,
                         fill = type))+
+  theme_classic()+
+  labs(x = "Elevation",
+       y = "WaterT (C)")+
   geom_boxplot()
 
 elevator.ridge <- ggplot(data = comb,
@@ -93,7 +99,8 @@ elevators
 elevator.ridge
 ```
 
-Air temp plots
+Air temp plots  
+
 ```{r}
 #Before I can plot airT stuff I need to get some kind of AirT data into my df
 #comine datasets by time and shed
@@ -112,14 +119,15 @@ presump <- brush %>% select(-X, -sensor, -shed, -day, -numb, -A.B, -rnd.dates)
 shed.presump <- brush %>% select(site, shed) %>% distinct()
 
 sump <- presump %>% group_by(site, type) %>% summarise_each(list(mean))
-ungroup(sump)
 
 sump <- left_join(sump, shed.presump, by = c("site"))
 ```
-
+As drainage area increases, average waterT increases  
 ```{r}
 #plots with sump
 #plotting uaa vs avg water T
+drain.d <- filter(sump, type )
+
 drain <- ggplot(sump, aes(x = UAA..ft2.,
                            y = Value,
                            color = shed,
@@ -132,7 +140,7 @@ drain <- ggplot(sump, aes(x = UAA..ft2.,
        y = "Average WaterT (C)")
 drain
 ```
-
+Slope has some kind of control on waterT  
 ```{r}
 #plotting slope vs avg water T
 steep <- ggplot(sump, aes(x = Slope..percent.rise.,
@@ -146,7 +154,7 @@ steep <- ggplot(sump, aes(x = Slope..percent.rise.,
        y = "Average WaterT (C)")
 steep
 ```
-
+Water temperatures at downstream sites vary with AirT, but water temperatures at head sites do not vary with AirT  
 ```{r}
 #airT vs WaterT
 brush.h <- filter(brush, type == "Head")
