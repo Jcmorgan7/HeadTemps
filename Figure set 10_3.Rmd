@@ -77,6 +77,7 @@ elevators <- ggplot(data = comb,
   theme_classic()+
   labs(x = "Elevation",
        y = "WaterT (C)")+
+  scale_x_continuous()+
   geom_boxplot()
 
 elevator.ridge <- ggplot(data = comb,
@@ -186,5 +187,159 @@ downy <- ggplot(brush.d, aes(x = airT,
 
 downy
 heady
+```
+
+Make new plots that I talked about with JP
+```{r}
+trug <- ggplot(comb, 
+               aes(x = Elevation..ft.,
+                   y = Value,
+                   group = site))+
+  geom_boxplot(aes(fill = type)
+                   )+
+  theme_classic()+
+  labs(x = "Elevation",
+       y = "WaterT (C)")
+  #scale_x_continuous()+
+  
+trug
+
+#group = cut_interval(Elevation..ft., length = 1))
+
+ggplot(data = NDVI_ts, aes(x = date, y = NDVI)) +
+  geom_boxplot(aes(fill = interaction(Trial.group, Treatment),
+                   group = interaction(factor(date), Trial.group, Treatment))) + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_date(breaks = "1 week", labels = date_format("%d-%b")) +
+  scale_fill_manual(name = "Treatment",
+                    values = c("#FEE0D2", "#DE2D26", "#DEEBF7", "#3182BD"))
+```
+
+10/24- Going to stop banging my head against the wall about the boxplot issue, try to get some of the other plots put together
+
+use average slope and average elevation to make plots- need to combine the data sheets i made
+```{r}
+#reading in data sheets within the folder
+mose <- read.csv("shed data 10_11/shed data 10_11/moselevstats.csv", header = T, sep = ",")
+mule <- read.csv("shed data 10_11/shed data 10_11/mulelevstats.csv", header = T, sep = ",")
+ids <- read.csv("shed data 10_11/shed data 10_11/slopeids.csv", header = T, sep = ",")
+stats <- read.csv("shed data 10_11/shed data 10_11/slopestats.csv", header = T, sep = ",")
+ulbe <- read.csv("shed data 10_11/shed data 10_11/ulbelevstats.csv", header = T, sep = ",")
+
+#combine the data sets
+#format the "master" sheet- ids
+ids <- select(ids, Site, type, pour_ord)
+stats <- select(stats, -OBJECTID, -COUNT, -RANGE, -SUM, -AREA)%>% 
+  rename(pour_ord = VALUE)
+mose <- select(mose, -OBJECTID, -COUNT,  -RANGE, -SUM)%>%
+  rename(pour_ord = VALUE)
+mule <- select(mule, -OBJECTID, -COUNT,  -RANGE, -SUM)%>%
+  rename(pour_ord = VALUE)
+ulbe <- select(ulbe, -OBJECTID, -COUNT,  -RANGE, -SUM)%>%
+  rename(pour_ord = VALUE)
+
+#make new frame with all of the new data
+bug <- left_join(ids, stats, by = "pour_ord")%>%
+  rename(slope.min = MIN, slope.max = MAX, slope.mean = MEAN, slope.sd = STD)%>%
+  mutate_each(list(as.character), Site, type)%>%
+  mutate(type = replace(type, type == "Down", "Downstream"))
+
+gut <- bind_rows(mose, mule, ulbe)
+buggy <- left_join(bug, gut, by = "pour_ord")%>%
+  rename(elev.min = MIN, elev.max = MAX, elev.mean = MEAN, elev.sd = STD)
+
+#changed the name of GG sites
+buggy <- buggy %>%
+  mutate(Site = replace(Site, Site == "W600", "Wind"),
+         Site = replace(Site, Site == "W400", "Wind"),
+         Site = replace(Site, Site == "GC100", "Glac"),
+         Site = replace(Site, Site == "GC300", "Glac"),
+         Site = replace(Site, Site == "LS0", "Land"),
+         Site = replace(Site, Site == "LS180", "Land"
+         ))
+
+#add new frame with topo metrics to master data frame from before
+crat <- select(comb, -X, -sensor, -numb, -day)%>%
+  rename(Site = site)
+buggy <- buggy %>% mutate_each(list(as.character), Site, type)
+crater <- inner_join(crat, buggy, by = c("Site", "type"))
+```
+
+Crater is the one- time to make some sick plots based off of it
+```{r}
+#Mean T vs size/elev
+crater <- mutate(crater, size.elev = AREA/elev.mean, elev.size = elev.mean/AREA)
+
+gronk1 <- ggplot(crater, aes(y = d.mean,
+                             x = size.elev,
+                             color = shed,
+                             shape = type))+
+  geom_point(aes(),
+                 size = 2)+
+  geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  scale_color_brewer(palette = "Dark2")+
+  xlab("area(ft2) / avg elev (ft)")
+gronk1
+
+gronk2 <- ggplot(crater, aes(y = d.mean,
+                             x = elev.mean,
+                             color = shed,
+                             shape = type))+
+  geom_point(aes(),
+                 size = 2)+
+  geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  scale_color_brewer(palette = "Dark2")+
+  xlab("avg elev (ft)")
+gronk2
+
+gronk3 <- ggplot(crater, aes(y = d.mean,
+                             x = AREA,
+                             color = shed,
+                             shape = type))+
+  geom_point(aes(),
+                 size = 2)+
+  geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  scale_color_brewer(palette = "Dark2")+
+  xlab("area(ft2)")
+gronk3
+```
+
+```{r}
+gronk2 <- ggplot(crater)+
+  geom_point(aes(x = d.mean,
+                 y = elev.size,
+                 color = shed,
+                 shape = ))+
+  theme_classic()+
+  ylab("avg elev (ft) / area(ft2)")
+gronk2
+```
+```{r}
+gronk3 <- ggplot(crater)+
+  geom_point(aes(x = d.sd,
+                 y = elev.size,
+                 color = shed,
+                 shape = ))+
+  theme_classic()+
+  ylab("avg elev (ft) / area(ft2)")
+gronk3
+```
+```{r}
+gronk4 <- ggplot(crater)+
+  geom_point(aes(y = d.sd,
+                 x = size.elev,
+                 color = shed,
+                 shape = ))+
+  theme_classic()+
+  xlab("area(ft2) / avg elev (ft)")
+gronk4
+```
+```{r}
+#are downstream sites more related to heads or elev, slope, uaa?
+d.crater <- filter(crater, type != "Downstream")
 ```
 
