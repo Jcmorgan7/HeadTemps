@@ -77,8 +77,9 @@ elevators <- ggplot(data = comb,
   theme_classic()+
   labs(x = "Elevation",
        y = "WaterT (C)")+
-  scale_x_continuous()+
-  geom_boxplot()
+  geom_boxplot()+
+  facet_grid(rows = vars(type))
+elevators
 
 elevator.ridge <- ggplot(data = comb,
                          aes(x = Value,
@@ -309,37 +310,182 @@ gronk3
 ```
 
 ```{r}
-gronk2 <- ggplot(crater)+
-  geom_point(aes(x = d.mean,
-                 y = elev.size,
-                 color = shed,
-                 shape = ))+
+gronk4 <- ggplot(crater, aes(y = d.sd,
+                             x = size.elev,
+                             color = shed,
+                             shape = type))+
+  geom_point(size = 2)+
   theme_classic()+
-  ylab("avg elev (ft) / area(ft2)")
-gronk2
-```
-```{r}
-gronk3 <- ggplot(crater)+
-  geom_point(aes(x = d.sd,
-                 y = elev.size,
-                 color = shed,
-                 shape = ))+
-  theme_classic()+
-  ylab("avg elev (ft) / area(ft2)")
-gronk3
-```
-```{r}
-gronk4 <- ggplot(crater)+
-  geom_point(aes(y = d.sd,
-                 x = size.elev,
-                 color = shed,
-                 shape = ))+
-  theme_classic()+
+  scale_color_brewer(palette = "Dark2")+
+  geom_smooth(method = 'lm', se = FALSE)+
   xlab("area(ft2) / avg elev (ft)")
 gronk4
+
+gronk5 <- ggplot(crater, aes(y = d.sd,
+                             x = AREA,
+                             color = shed,
+                             shape = type))+
+  geom_point(aes(),
+                 size = 2)+
+  geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  scale_color_brewer(palette = "Dark2")+
+  xlab("area(ft2)")
+gronk5
+
+gronk6 <- ggplot(crater, aes(y = d.sd,
+                             x = elev.mean,
+                             color = shed,
+                             shape = type))+
+  geom_point(aes(),
+                 size = 2)+
+  geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  scale_color_brewer(palette = "Dark2")+
+  xlab("Elevation(ft)")
+gronk6
 ```
+
 ```{r}
 #are downstream sites more related to heads or elev, slope, uaa?
-d.crater <- filter(crater, type != "Downstream")
+d.crater <- filter(crater, type == "Downstream")
+
+#plot down vs heads
+#need new data sheet that has the head temp as a variable for each down observation
+#join two filtered data sets
+di <- filter(crater, type == "Downstream")%>%
+  select(Site, shed, type, Value, rnd.dates, d.mean, d.sd)%>%
+  rename(down.temp = Value, down.dmean = d.mean, down.dsd = d.sd)
+         #slope.mean, slope.sd, AREA, elev.mean)
+ll <- filter(crater, type == "Head")%>%
+  select(Site, Value, shed, rnd.dates, d.mean, d.sd)%>%
+  rename(head.temp = Value, head.dmean = d.mean, head.dsd = d.sd)
+dill <- left_join(di, ll, by = c("Site", "rnd.dates","shed"))
+#success, plot time
+down.heads <- ggplot(dill, aes(x = head.temp,
+                                   y = down.temp,
+                                   color = shed))+
+  stat_density2d(size = 0.5)+
+  scale_color_brewer(palette = "Dark2")+
+  #geom_point(size = 2)+
+  theme_classic()
+down.heads
+
+davg.down.heads <- ggplot(dill, aes(x = head.dmean,
+                                    y = down.dmean,
+                                    color = shed))+
+  stat_density2d(size = 0.5)+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()
+davg.down.heads
+
+dsd.down.heads <- ggplot(dill, aes(x = head.dsd,
+                                   y = down.dsd,
+                                   color = shed))+
+  stat_density2d(size = 0.5)+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()
+dsd.down.heads
+#plot down vs elev
+
+#plot down vs slope
+
+#plot down vs uaa
+```
+
+```{r}
+#plot down vs elev
+del <- ggplot(d.crater, aes(x = elev.mean,
+                            y = d.mean))+
+  geom_point(aes(color = shed), size = 2)+
+  geom_smooth(aes(color = shed), method = 'lm', se = FALSE)+
+  geom_smooth(method = 'lm', se = FALSE)+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()
+del
+
+del2 <- ggplot(d.crater, aes(x = elev.mean,
+                            y = d.sd))+
+  geom_point(aes(color = shed), size = 2)+
+  geom_smooth(aes(color = shed), method = 'lm', se = FALSE)+
+  geom_smooth(method = 'lm', se = FALSE)+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()
+del2
+
+del.min <- ggplot(d.crater, aes(x = elev.mean,
+                                y = d.min))+
+  geom_point(aes(color = shed), size = 2)+
+    geom_point(aes(color = shed), size = 2)+
+  geom_smooth(aes(color = shed), method = 'lm', se = FALSE)+
+  geom_smooth(method = 'lm', se = FALSE)+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()
+del.min
+```
+
+```{r}
+#plot down vs slope
+slo <- ggplot(d.crater, aes(x = slope.mean,
+                            y = d.mean))+
+  geom_point(aes(color = shed), size = 2)+
+  geom_smooth(aes(color = shed), method = 'lm', se = FALSE)+
+  geom_smooth(method = 'lm', se = FALSE)+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()
+slo
+
+slo2 <- ggplot(d.crater, aes(x = slope.mean,
+                            y = Value))+
+  geom_point(aes(color = shed), size = 2)+
+  geom_smooth(aes(color = shed), method = 'lm', se = FALSE)+
+  geom_smooth(method = 'lm', se = FALSE)+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()
+slo2
+```
+
+```{r}
+#plot down vs UAA
+ua <- ggplot(d.crater, aes(x = slope.mean,
+                            y = Value))+
+  geom_point(aes(color = shed), size = 2)+
+  geom_smooth(aes(color = shed), method = 'lm', se = FALSE)+
+  geom_smooth(method = 'lm', se = FALSE)+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()
+ua
+```
+
+Make plots with just heads from those above
+
+
+
+
+
+
+
+
+
+
+
+
+How to make plots with just one point for all of the temperatures for each stream? 
+
+If I divide the waterT by AirT, and AirT is the greatest control, then it should be some unitless number representing the temperature of the water without the influence of the air
+
+```{r}
+#average of the T normalized by air temperature- use to make one point
+#need to make new df that includes the air temp of each site as a variable
+temps.air <- filter(temps, type == "air")%>%
+  select(shed, Value, rnd.dates, d.mean)%>%
+  rename(air.t = Value, air.d.mean = d.mean)
+
+norm <- left_join(crater, temps.air, by = c("shed", "rnd.dates"))%>%
+  mutate(wt.airt = Value/air.t, wt.airt.dmean = d.mean/air.d.mean)
+
+chunk <- norm%>%
+  group_by(Site)%>%
+  summarise(mean(wt.airt, na.rm = TRUE))
 ```
 
