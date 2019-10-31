@@ -281,6 +281,8 @@ gronk1 <- ggplot(crater, aes(y = d.mean,
   geom_smooth(method = 'lm', se = FALSE)+
   theme_classic()+
   scale_color_brewer(palette = "Dark2")+
+    facet_grid(cols = vars(type))+
+
   xlab("area(ft2) / avg elev (ft)")
 gronk1
 
@@ -293,6 +295,8 @@ gronk2 <- ggplot(crater, aes(y = d.mean,
   geom_smooth(method = 'lm', se = FALSE)+
   theme_classic()+
   scale_color_brewer(palette = "Dark2")+
+    facet_grid(cols = vars(type))+
+
   xlab("avg elev (ft)")
 gronk2
 
@@ -305,6 +309,8 @@ gronk3 <- ggplot(crater, aes(y = d.mean,
   geom_smooth(method = 'lm', se = FALSE)+
   theme_classic()+
   scale_color_brewer(palette = "Dark2")+
+    facet_grid(cols = vars(type))+
+
   xlab("area(ft2)")
 gronk3
 ```
@@ -316,6 +322,7 @@ gronk4 <- ggplot(crater, aes(y = d.sd,
                              shape = type))+
   geom_point(size = 2)+
   theme_classic()+
+  facet_grid(cols = vars(type))+
   scale_color_brewer(palette = "Dark2")+
   geom_smooth(method = 'lm', se = FALSE)+
   xlab("area(ft2) / avg elev (ft)")
@@ -328,6 +335,8 @@ gronk5 <- ggplot(crater, aes(y = d.sd,
   geom_point(aes(),
                  size = 2)+
   geom_smooth(method = 'lm', se = FALSE)+
+    facet_grid(cols = vars(type))+
+
   theme_classic()+
   scale_color_brewer(palette = "Dark2")+
   xlab("area(ft2)")
@@ -339,6 +348,8 @@ gronk6 <- ggplot(crater, aes(y = d.sd,
                              shape = type))+
   geom_point(aes(),
                  size = 2)+
+    facet_grid(cols = vars(type))+
+
   geom_smooth(method = 'lm', se = FALSE)+
   theme_classic()+
   scale_color_brewer(palette = "Dark2")+
@@ -485,7 +496,40 @@ norm <- left_join(crater, temps.air, by = c("shed", "rnd.dates"))%>%
   mutate(wt.airt = Value/air.t, wt.airt.dmean = d.mean/air.d.mean)
 
 chunk <- norm%>%
-  group_by(Site)%>%
-  summarise(mean(wt.airt, na.rm = TRUE))
+  group_by(Site, type)%>%
+  summarise(avg.wtairt = mean(wt.airt, na.rm = TRUE), 
+            avg.Value = mean(Value), 
+            avg.wtairtdmean = mean(wt.airt.dmean, na.rm = TRUE))
+
+grut <- crater%>%
+  select(Site, type, shed, UAA..ft2., slope.mean, elev.mean, size.elev)
+
+
+grup <- inner_join(grut, unique(chunk), by = c("Site", "type"))%>%
+  distinct()
+#data sheet that has the normalized temps and other metrics of interest
+#time to plot them
+```
+
+```{r}
+#using df grup, which has topo metrics and the normalized temps
+grup.down <- filter(grup, type == "Downstream")
+grup.head <- filter(grup, type == "Head")
+
+grup1 <- ggplot(grup, aes(x = elev.mean,
+                          y = avg.wtairt,
+                          color = shed))+
+  geom_point(aes(shape = type), size = 2)+
+  geom_smooth(aes(color = shed), method = 'lm', se = FALSE)+
+  theme_classic()+
+  facet_grid(cols = vars(type))
+  scale_color_brewer(palette = "Dark2")
+grup1
+```
+
+calculate rates, plot against everything
+```{r}
+#calculate rates
+
 ```
 
