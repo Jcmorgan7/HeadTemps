@@ -530,6 +530,9 @@ grup1
 calculate rates, plot against everything
 ```{r}
 #calculate rates
-
+rat <- crater%>%
+  select(Site, type, Value, rnd.dates)%>%
+  mutate(value.1 = lag(Value))%>%
+  mutate(rate = value.1 - Value)
 ```
 
