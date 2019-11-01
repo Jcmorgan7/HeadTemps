@@ -529,10 +529,28 @@ grup1
 
 calculate rates, plot against everything
 ```{r}
-#calculate rates
+#calculate derivative of lines
 rat <- crater%>%
   select(Site, type, Value, rnd.dates)%>%
   mutate(value.1 = lag(Value))%>%
   mutate(rate = value.1 - Value)
+```
+
+```{r}
+#calculate the rate of warming moving downstream
+#read in csv with straight line distance between head and downstream site
+dist <- read.csv("distances 11_1.csv")
+dist <- dist %>% mutate_each(list(as.character), Site)
+
+warm <- dill%>%
+  left_join(dist, by = "Site")%>%
+  mutate(diff = down.temp - head.temp)%>%
+  mutate(rate = diff / straight.line.Dist.to.head.m)
+
+rat.time <- ggplot(warm, aes(x = rnd.dates,
+                             y = rate))+
+  geom_line(aes(color = Site))+
+  theme_classic()
+rat.time
 ```
 
