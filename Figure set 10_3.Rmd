@@ -554,3 +554,67 @@ rat.time <- ggplot(warm, aes(x = rnd.dates,
 rat.time
 ```
 
+```{r}
+#rate vs slope, elev, uaa
+willy <- select(warm, Site, rnd.dates, rate)
+#df with topographic metrics, temp stuff, and rates
+will <- left_join(crater, willy, by = "Site", "rnd.dates")
+```
+
+11/5
+Need to make final figure set to show JP and Christa for Friday
+-dont do anything with rates until I can calculate the distance along the lines between the two points
+
+```{r}
+#plot down vs heads
+#need new data sheet that has the head temp as a variable for each down observation
+#join two filtered data sets
+di <- filter(crater, type == "Downstream")%>%
+  select(Site, shed, type, Value, rnd.dates, d.mean, d.sd)%>%
+  rename(down.temp = Value, down.dmean = d.mean, down.dsd = d.sd)
+         #slope.mean, slope.sd, AREA, elev.mean)
+ll <- filter(crater, type == "Head")%>%
+  select(Site, Value, shed, rnd.dates, d.mean, d.sd)%>%
+  rename(head.temp = Value, head.dmean = d.mean, head.dsd = d.sd)
+dill <- left_join(di, ll, by = c("Site", "rnd.dates","shed"))
+#success, plot time
+down.heads <- ggplot(dill, aes(x = head.temp,
+                               y = down.temp))+
+  stat_density2d(aes(color = shed),
+                 size = 0.5)+
+   geom_smooth(method = 'lm', se = FALSE)+
+  scale_color_brewer(palette = "Dark2")+
+  #geom_point(size = 2)+
+  theme_classic()
+down.heads
+
+davg.down.heads <- ggplot(dill, aes(x = head.dmean,
+                                    y = down.dmean))+
+   stat_density2d(aes(color = shed),
+                 size = 0.5)+
+   geom_smooth(method = 'lm', se = FALSE)+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()
+davg.down.heads
+
+d.crater.dill <- left_join(d.crater, ll, by = c("Site", "rnd.dates","shed"))
+
+d.mean.model <- lm(d.mean ~ head.dmean + slope.mean + elev.mean + AREA + UAA..ft2., data = d.crater.dill)
+summary(d.mean.model)
+
+h.mean.model <- lm(head.temp ~ slope.mean  + elev.mean + AREA + UAA..ft2., data = d.crater.dill)
+summary(h.mean.model)
+
+head.form <- 1.291e-01 * slope.mean + 
+  -6.921e-04 * elev.mean + 
+   3.296e-07 * AREA +
+   3.025e-06 * UAA..ft2.+
+   8.294e+00
+
+modtest <- d.crater.dill%>%
+  select(Site, shed, rnd.dates, slope.mean, elev.mean, AREA, UAA..ft2., head.temp)%>%
+  attach()
+
+modtestdf <- left_join(d.crater.dill)
+```
+
