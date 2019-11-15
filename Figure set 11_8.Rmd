@@ -1,0 +1,309 @@
+---
+title: "Figure set 11_8"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+#global settings
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+#Packages
+library(tidyverse)
+library(lubridate)
+library(ggridges)
+```
+
+```{r}
+#read in data set
+dogg <- read.csv("Tempsanddata_11_8.csv")
+warm <- read.csv("straightlinerates11_8.csv")
+
+warm <- select(warm, Site, shed, rnd.dates, straight.line.Dist.to.head.m, diff, rate)
+
+dogg <- left_join(dogg, warm, by = c("Site", "shed", "rnd.dates"))
+
+#adding averages
+chunk <- dogg%>%
+  group_by(Site, type)%>%
+  summarise(avg.headtemp = mean(head.temp, na.rm = TRUE), 
+            avg.Value = mean(Value))
+
+doge <- inner_join(dogg, unique(chunk), by = c("Site", "type"))%>%
+  distinct()
+```
+  
+Figures to be made- box and whisker plot of temp distributions and ranges of rates
+```{r}
+#boxplot of the temps by elevation
+elevators <- ggplot(data = dogg, 
+                    aes(x = fct_reorder(ite, Elevation..ft.),
+                        y = Value,
+                        fill = type))+
+  theme_classic()+
+  labs(x = "Elevation",
+       y = "WaterT (C)")+
+  geom_boxplot()+
+  facet_grid(rows = vars(type))+
+  theme(strip.background = element_blank(),
+        strip.text = element_blank())
+elevators
+```
+```{r}
+#rates
+rate.box <- ggplot(data = dogg, 
+                    aes(x = fct_reorder(Site, Elevation..ft.),
+                        y = rate))+
+  theme_classic()+
+  labs(x = "Elevation",
+       y = "WaterT (C)")+
+  geom_boxplot()+
+  facet_grid(rows = vars(type))+
+  theme(strip.background = element_blank(),
+        strip.text = element_blank())
+rate.box
+```
+
+```{r}
+#warming rates since June 27- period of continuous warming
+
+```
+
+```{r}
+#results of the multi-linear model
+h.mean.model <- lm(head.temp ~ slope.mean  + elev.mean + UAA..ft2. + air.d.mean, data = dogg)
+summary(h.mean.model)
+```
+```{r}
+#make a data frame to use to test the model equation
+modeltester <- dogg%>%
+  select(Site, shed, slope.mean, elev.mean, elev.size, UAA..ft2., head.temp)%>%
+  mutate(model = 1.285e-01 * slope.mean + 
+  -6.103e-04 * elev.mean + 
+   -1.062e+01 * elev.size +
+   1.585e-06 * UAA..ft2.+
+   8.458e+00)%>%
+  group_by(Site)%>%
+  mutate(avg.head = mean(head.temp, na.rm = TRUE))
+
+modeltester <- select(modeltester, -head.temp)
+modeltester <- unique(modeltester)
+modeltester <- modeltester%>%
+  mutate(diff = avg.head - model)%>%
+  mutate(diff.2 = sqrt(diff * diff))
+
+testmodel <- ggplot(modeltester, aes(x = avg.headtemp,
+                                     y = model,
+                                     color = shed))+
+  geom_point(size = 2)+
+  theme_classic()
+testmodel
+```
+
+
+Make plot of the accuracy of the linear model
+
+```{r}
+#slope vs avg temps
+#plot down vs slope
+slo <- ggplot(doge, aes(x = slope.mean,
+                            y = avg.headtemp))+
+  geom_point(aes(color = shed), size = 2)+
+  geom_smooth(aes(color = shed), method = 'lm', se = FALSE)+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()
+slo
+
+slo2 <- ggplot(doge, aes(x = slope.mean,
+                            y = avg.Value))+
+  geom_point(aes(color = shed), size = 2)+
+  geom_smooth(aes(color = shed), method = 'lm', se = FALSE)+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()
+slo2
+```
+
+```{r}
+#elevation vs temps
+del <- ggplot(doge, aes(x = elev.mean,
+                            y = avg.headtemp))+
+  geom_point(aes(color = shed), size = 2)+
+  geom_smooth(aes(color = shed), method = 'lm', se = FALSE)+
+  geom_smooth(method = 'lm', se = FALSE)+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()
+del
+
+del2 <- ggplot(doge, aes(x = elev.mean,
+                            y = avg.Value))+
+  geom_point(aes(color = shed), size = 2)+
+  geom_smooth(aes(color = shed), method = 'lm', se = FALSE)+
+  geom_smooth(method = 'lm', se = FALSE)+
+  scale_color_brewer(palette = "Dark2")+
+  theme_classic()
+del2
+```
+
+```{r}
+#head temps vs down temps
+down.heads <- ggplot(dogg, aes(x = head.temp,
+                               y = Value,
+                                   color = shed))+
+  stat_density2d(size = 0.5)+
+  scale_color_brewer(palette = "Dark2")+
+  #geom_point(size = 2)+
+  theme_classic()
+down.heads
+```
+
+Making plots of regression results vs actual temperatures
+```{r}
+#results of the multi-linear model
+h.model <- lm(head.temp ~ 
+                slope.mean  +
+                elev.mean + 
+                UAA..ft2.,data = dogg)
+
+h.model.air <- lm(head.temp ~ 
+                    slope.mean  + 
+                    elev.mean + 
+                    UAA..ft2. + 
+                    air.d.mean, data = dogg)
+
+d.model <- lm(Value ~ 
+                slope.mean  + 
+                elev.mean + 
+                UAA..ft2. , data = dogg)
+
+d.model.air <- lm(Value ~ 
+                    slope.mean  + 
+                    elev.mean + 
+                    UAA..ft2. + 
+                    air.d.mean, data = dogg)
+
+h.avg.model <- lm(head.dmean ~ 
+                slope.mean  +
+                elev.mean + 
+                UAA..ft2.,data = dogg)
+
+modeltester <- dogg%>%
+  select(Site, shed, slope.mean, elev.mean, AREA, UAA..ft2., head.temp)%>%
+  mutate(h.avg.model = 1.261e-01 * slope.mean + 
+  -6.722e-04 * elev.mean + 
+   5.125e-06 * UAA..ft2.+
+   8.329e+00)%>%
+  group_by(Site)%>%
+  mutate(avg.head = mean(head.temp, na.rm = TRUE))
+
+plotJPwants <- ggplot(modeltester, aes(x = avg.head,
+                                       y = h.avg.model))+
+  theme_classic()+
+  geom_point(aes(color = shed), size = 3)+
+   #geom_smooth(method = 'lm', se = FALSE)+
+  labs(x = "Measured average head temp (C)",
+       y = "Modeled average head temp")
+plotJPwants
+```
+
+11/9
+Making a first crack at the insane idea Christa had to try to see over what timescale air temperature might matter using linear regressions
+
+DAPR - Number of days included in the multiday precipitation total (MDPR)
+SNOW - Snowfall
+TMAX - Maximum temperature
+TMIN - Minimum temperature
+PRCP - Precipitation
+TOBS - Temperature at the time of observation
+MDPR - Multiday precipitation total (use with DAPR and DWPR, if available)
+SNWD - Snow depth
+```{r}
+#read in data set of 100 years of cullowhee weather data- hell yeah
+cull <- read.csv("Cullowheerain.csv")
+cull$DATE <- ymd(cull$DATE)
+cull$year <- year(cull$DATE)
+
+ggplot(cull, aes(x = year))+
+  geom_bar(aes(y = PRCP), stat = "identity")+
+  geom_bar(aes(y = SNOW), stat = "identity", color = "blue")+
+  theme_classic()
+#make df with the last 20 years in the record
+last20 <- filter(cull, year > 2000)
+ggplot(last20, aes(x = DATE,
+                   y = PRCP))+
+  geom_line()+
+  theme_classic()
+
+last5 <- filter(cull, year > 2014)%>%
+  select(-STATION, -DAPR, -MDPR, -SNWD)
+```
+
+Need the topographic metrics for GG
+```{r}
+#making df with topo metrics for GG sites
+grib <- filter(dogg, shed == "GG")%>%
+  select(Site, head.dmean, rnd.dates, slope.mean, UAA..ft2., elev.mean, air.d.mean)
+#datasheet for JP
+JP <- filter(dogg, shed == "GG")%>%
+  select(Site, Value, d.mean, head.temp, head.dmean, rnd.dates, slope.mean, UAA..ft2., elev.mean, air.d.mean, rate)%>%
+  rename(down.temp = Value, down.dmean = d.mean, warm.rate.c_m = rate)
+
+JP <- mutate(JP, UAA.m2 = UAA..ft2.* 0.3048 *0.3048, elev.mean.m = elev.mean * 0.3048)%>%
+  select(-UAA..ft2., -elev.mean)
+#write.csv(JP, file = "GGheadtempdata_11_11.csv")
+
+
+#formatting time
+grib$rnd.dates <- ymd_hms(grib$rnd.dates)
+grib$rnd.dates <- date(grib$rnd.dates)
+
+grib.base <- lm(head.dmean ~ slope.mean + UAA..ft2.  + air.d.mean, data = grib)
+summary(grib.base)
+
+dd <- ddays(25)
+```
+
+```{r}
+#running regressions
+#grib
+#last5
+my_lms <- lapply(1:2, function(x) lm(grib$head.dmean ~ last5$TOBS + grib$slope.mean + grib$UAA..ft2.))
+
+sapply(summaries, function(x) c(r_sq = x$r.squared, 
+                                adj_r_sq = x$adj.r.squared))
+```
+
+11/13
+Attempting to apply the model to the supposed channel heads in moses creek
+```{r}
+#reading in topo metrics from dem identified channel heads
+slope <- read.csv("maybemosslope.csv")
+elev <- read.csv("maybemoselev.csv")
+maye <- read.csv("maybe_moses.csv")
+
+slope <- select(slope, OBJECTID, MEAN)%>%
+  rename(Site = OBJECTID, slope.mean = MEAN)
+elev <- select(elev, OBJECTID, MEAN)%>%
+  rename(Site = OBJECTID, elev.mean = MEAN)
+maybe <- select(maye, Site, type, uaa_ft2)
+
+mosay <- left_join(maybe, slope, by = "Site")
+mosay <- left_join(mosay, elev, by = "Site")
+```
+
+```{r}
+#apply the model to the hypothetical sites
+#head avg temp model
+mostest <- mosay%>%
+  mutate(h.avg.model = 1.261e-01 * slope.mean + 
+  -6.722e-04 * elev.mean + 
+   5.125e-06 * uaa_ft2+
+   8.329e+00)
+
+modelmaybemose <- left_join(maye, mostest, by = "Site")%>%
+  select(Site, type.x, NEAR_X, NEAR_Y, h.avg.model)
+
+mop <- modelmaybemose[complete.cases(modelmaybemose),]
+#write.csv(mop, file = "modelmaybemoses_11_14.csv")
+```
+

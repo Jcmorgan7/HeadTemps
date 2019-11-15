@@ -552,6 +552,9 @@ rat.time <- ggplot(warm, aes(x = rnd.dates,
   geom_line(aes(color = Site))+
   theme_classic()
 rat.time
+
+#calculate warming rate from JUNE 27 onward
+filter(FL_DATE >= as.Date("2014-01-05"))
 ```
 
 ```{r}
@@ -587,7 +590,10 @@ down.heads <- ggplot(dill, aes(x = head.temp,
   #geom_point(size = 2)+
   theme_classic()
 down.heads
+```
 
+
+```{r}
 davg.down.heads <- ggplot(dill, aes(x = head.dmean,
                                     y = down.dmean))+
    stat_density2d(aes(color = shed),
@@ -599,7 +605,7 @@ davg.down.heads
 
 d.crater.dill <- left_join(d.crater, ll, by = c("Site", "rnd.dates","shed"))
 
-d.mean.model <- lm(d.mean ~ head.dmean + slope.mean + elev.mean + AREA + UAA..ft2., data = d.crater.dill)
+d.mean.model <- lm(Value ~  head.temp + slope.mean + elev.mean  + UAA..ft2., data = d.crater.dill)
 summary(d.mean.model)
 
 h.mean.model <- lm(head.temp ~ slope.mean  + elev.mean + AREA + UAA..ft2., data = d.crater.dill)
@@ -612,9 +618,48 @@ head.form <- 1.291e-01 * slope.mean +
    8.294e+00
 
 modtest <- d.crater.dill%>%
-  select(Site, shed, rnd.dates, slope.mean, elev.mean, AREA, UAA..ft2., head.temp)%>%
-  attach()
+  select(Site, shed, rnd.dates, slope.mean, elev.mean, AREA, UAA..ft2., head.temp)
 
+detach(modtest)
 modtestdf <- left_join(d.crater.dill)
+
+#make a data frame to use to test the model equation
+modeltester <- d.crater.dill%>%
+  select(Site, shed, slope.mean, elev.mean, AREA, UAA..ft2., head.temp)%>%
+  mutate(model = 1.291e-01 * slope.mean + 
+  -6.921e-04 * elev.mean + 
+   3.296e-07 * AREA +
+   3.025e-06 * UAA..ft2.+
+   8.294e+00)%>%
+  group_by(Site)%>%
+  mutate(avg.head = mean(head.temp, na.rm = TRUE))
+
+modeltester <- select(modeltester, -head.temp)
+modeltester <- unique(modeltester)
+modeltester <- modeltester%>%
+  mutate(diff = avg.head - model)%>%
+  mutate(diff.2 = sqrt(diff * diff))
+
+testmodel <- ggplot(modeltester, aes(x = elev.mean,
+                                     y = diff.2,
+                                     color = shed))+
+  geom_point(size = 2)+
+  theme_classic()
+testmodel
+```
+
+```{r}
+#make data sheet to save and use for plotting on the newer figure set
+#brush- has air temp stuff
+#crater- everything else
+brushed <- brush%>%
+  select(site, shed, rnd.dates, airT, air.d.mean, air.d.min, air.d.max, air.d.sd)%>%
+  rename(Site = site)
+
+
+dogg <- left_join(d.crater.dill, brushed, by = c("Site", "shed", "rnd.dates"))
+
+#write.csv(dogg, file = "Tempsanddata_8_11.csv")
+#write.csv(warm, file = "straightlinerates11_8.csv")
 ```
 
