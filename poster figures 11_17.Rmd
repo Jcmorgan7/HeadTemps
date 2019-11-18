@@ -1,0 +1,114 @@
+---
+title: "Poster Figure set 11_17"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+#global settings
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE, error=FALSE)
+```
+
+```{r}
+#Packages
+library(tidyverse)
+library(lubridate)
+library(ggridges)
+```
+
+```{r}
+dogg <- read.csv("Tempsanddata_11_8.csv")
+comb <- read.csv("Talltemps_11_17.csv")
+```
+
+Making my custom theme with transparent backgrounds
+```{r}
+theme_invis <- function (){
+  theme_classic(base_size=17, base_family="Arial") %+replace% 
+        theme(
+            panel.background  = element_blank(),
+            plot.background = element_rect(fill="transparent", colour=NA), 
+            legend.background = element_rect(fill="transparent", colour=NA),
+            legend.key = element_rect(fill="transparent", colour=NA)
+        )
+}
+
+
+      
+      
+      
+      
+      panel.border = element_blank(), 
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+         panel.background = element_rect(fill = "transparent", color = NA), # bg of the panel
+         plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+         legend.background = element_rect(fill = "transparent", color = NA), # get rid of legend bg
+         legend.box.background = element_rect(fill = "transparent", color = NA),
+         legend.margin = element_blank(),
+         legend.key = element_rect(fill = "transparent", color = NA))
+}
+```
+
+
+11/17
+Making final plots for AGU poster
+```{r}
+#Boxplot of distribution of temps
+elevators <- ggplot(data = comb, 
+                    aes(x = fct_reorder(site, Elevation..ft.),
+                        y = Value,
+                        fill = type))+
+  theme_classic()+
+  labs(x = "Elevation",
+       y = "WaterT (C)")+
+  guides(fill=FALSE)+
+  theme(panel.border = element_rect(colour = "black"),
+        rect = element_rect(fill = "transparent"),
+         panel.background = element_rect(fill = "transparent"), # bg of the panel
+    plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+    panel.grid.major = element_blank(), # get rid of major grid
+    panel.grid.minor = element_blank(), # get rid of minor grid
+    legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+    legend.box.background = element_rect(fill = "transparent"),
+    strip.background = element_blank()
+)+
+  geom_boxplot()+
+  facet_grid(rows = vars(type))
+elevators
+ggsave(elevators, filename = "elev_boxplots_11_17.png",  bg = "transparent")
+
+```
+
+Air temp vs head and downstream sites
+```{r}
+#airT vs WaterT
+heady <- ggplot(dogg, aes(x = airT,
+                          y = head.temp,
+                          color = shed))+
+  geom_point(size = 1,
+             alpha = 0.25)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_invis()+
+  scale_color_brewer(palette = "Spectral")+
+  labs(x = "Average airT (C)",
+       y = "Average WaterT (C)")
+
+#downstream sites
+downy <- ggplot(dogg, aes(x = airT,
+                          y = Value,
+                          color = shed))+
+  geom_point(size = 1,
+             alpha = 0.25)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_invis()+
+  scale_color_brewer(palette = "Spectral")+
+  labs(x = "Average airT (C)",
+       y = "Average WaterT (C)")
+
+downy
+heady
+
+ggsave(downy, filename = "downvsair.png",  bg = "transparent")
+ggsave(heady, filename = "headvsair.png",  bg = "transparent")
+
+```

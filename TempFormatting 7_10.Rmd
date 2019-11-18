@@ -729,10 +729,10 @@ gg.ts.plot
 
 
 
-ggsave("ulb.ts.png", plot = ulb.ts.plot, width = 8, height = 5, units = c("in"))
-ggsave("mul.ts.png", plot = mul.ts.plot, width = 8, height = 5, units = c("in"))
-ggsave("rmo.ts.png", plot = rmo.ts.plot, width = 8, height = 5, units = c("in"))
-ggsave("gg.ts.png", plot = gg.ts.plot, width = 8, height = 5, units = c("in"))
+#ggsave("ulb.ts.png", plot = ulb.ts.plot, width = 8, height = 5, units = c("in"))
+#ggsave("mul.ts.png", plot = mul.ts.plot, width = 8, height = 5, units = c("in"))
+#ggsave("rmo.ts.png", plot = rmo.ts.plot, width = 8, height = 5, units = c("in"))
+#ggsave("gg.ts.png", plot = gg.ts.plot, width = 8, height = 5, units = c("in"))
 
 ```
 

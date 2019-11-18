@@ -307,3 +307,74 @@ mop <- modelmaybemose[complete.cases(modelmaybemose),]
 #write.csv(mop, file = "modelmaybemoses_11_14.csv")
 ```
 
+11/14
+Attempting to use new rolling packages
+```{r}
+library(tidyquant)
+```
+
+```{r}
+#trying to use tidyquant
+test <- grib%>%
+  select()%>%
+  tq_mutate(
+        select     = air.d.mean,
+        mutate_fun = rollapply, 
+        # rollapply args
+        width      = 30,
+        align      = "right",
+        by.column  = FALSE,
+        FUN        = mean,
+        # FUN args
+        na.rm      = TRUE
+    )%>%
+  select(value)
+  
+  seat <- as.zoo(log(UKDriverDeaths))
+time(seat) <- as.yearmon(time(seat))
+seat <- merge(y = seat, y1 = lag(seat, k = -1),
+  y12 = lag(seat, k = -5), all = FALSE)
+
+rr <- rollapply(seat, width = 36,
+  FUN = function(z) coef(lm(y ~ y1 + y12, data = as.data.frame(z))),
+  by.column = FALSE, align = "right")
+plot(rr)
+#getting topo metrics
+gg.slope <- grib$slope.mean[1]
+gg.UAA <- grib$UAA..ft2.[1]
+gg.elev <- grib$elev.mean[1]
+gg.headavg <- 11.989
+#applying topo metrics to last 20 years of temp data
+last20.reg <- select(last20, DATE, TMAX, TMIN, TOBS)%>%
+  mutate(slope.mean = gg.slope, UAA..ft2. = gg.UAA, elev.mean = gg.elev,
+         head.temp = gg.headavg)
+
+#make function that runs the multilinear regression
+# Custom function to return mean, sd, 95% conf interval
+custom_stat_fun_2 <- function(x, na.rm = TRUE) {
+    # x     = numeric vector
+    # na.rm = boolean, whether or not to remove NA's
+    
+    m  <- mean(x, na.rm = na.rm)
+    s  <- sd(x, na.rm = na.rm)
+    hi <- m + 2*s
+    lo <- m - 2*s
+    
+    ret <- c(mean = m, stdev = s, hi.95 = hi, lo.95 = lo) 
+    return(ret)
+}
+#my custom function
+rickroll <- function(x, na.rm = TRUE){
+  model <- lm(head.temp ~  
+                TMAX + TMIN, data = as.data.frame(x))
+  r <- summary(model)$r.squared
+  return(r)
+}
+#my attempt to do a rolling calculat
+gribregulation <- rollapply(last20.reg, width = 25,
+                     FUN = rickroll,
+                     by.column = FALSE, align = "right")
+```
+got some crazy error messages, I think there are problems with the factor levels- need to revisit with fresh eyes
+
+
