@@ -23,16 +23,23 @@ comb <- read.csv("Talltemps_11_17.csv")
 Making my custom theme with transparent backgrounds
 ```{r}
 theme_invis <- function (){
-  theme_classic(base_size=17, base_family="Arial") %+replace% 
-        theme(
-            panel.background  = element_blank(),
-            plot.background = element_rect(fill="transparent", colour=NA), 
-            legend.background = element_rect(fill="transparent", colour=NA),
-            legend.key = element_rect(fill="transparent", colour=NA)
-        )
+        theme(text= element_text(size=17),
+        panel.background  = element_blank(),
+        plot.background = element_rect(fill="transparent", colour=NA),
+        legend.background = element_rect(fill="transparent", colour=NA),
+        legend.key = element_rect(fill="transparent", colour=NA),
+        panel.border = element_blank(), panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank(), axis.line = element_line(colour = "black", 
+                size = rel(1)))
 }
 
-
+theme_in <- function(){
+theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank(), axis.line = element_line(colour = "black", 
+                size = rel(1)), legend.key = element_blank(), 
+            strip.background = element_rect(fill = "transparent", 
+                colour = "black", size = rel(2)), complete = TRUE)
+}
       
       
       
@@ -70,12 +77,17 @@ elevators <- ggplot(data = comb,
     panel.grid.minor = element_blank(), # get rid of minor grid
     legend.background = element_rect(fill = "transparent"), # get rid of legend bg
     legend.box.background = element_rect(fill = "transparent"),
-    strip.background = element_blank()
+    strip.background = element_blank(),
+    #axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17),
+    axis.title.y=element_text(size = 17),
+        axis.title.x=element_text(size = 17)
 )+
   geom_boxplot()+
   facet_grid(rows = vars(type))
 elevators
-ggsave(elevators, filename = "elev_boxplots_11_17.png",  bg = "transparent")
+ggsave(elevators, filename = "elev_boxplots_11_17.png",  bg = "transparent",
+       width = 7.5, height = 4.8, units = c("in"))
 
 ```
 
@@ -112,3 +124,117 @@ ggsave(downy, filename = "downvsair.png",  bg = "transparent")
 ggsave(heady, filename = "headvsair.png",  bg = "transparent")
 
 ```
+Model
+```{r}
+h.avg.model <- lm(head.dmean ~ 
+                slope.mean  +
+                elev.mean + 
+                UAA..ft2.,data = dogg)
+summary(h.avg.model)
+modeltester <- dogg%>%
+  select(Site, shed, slope.mean, elev.mean, AREA, UAA..ft2., head.temp)%>%
+  mutate(h.avg.model = 1.261e-01 * slope.mean + 
+  -6.722e-04 * elev.mean + 
+   5.125e-06 * UAA..ft2.+
+   8.329e+00)%>%
+  group_by(Site)%>%
+  mutate(avg.head = mean(head.temp, na.rm = TRUE))
+
+moss <- read.csv("modelmaybemoses_11_21.csv")
+
+plotJPwants <- ggplot()+
+  theme_classic()+
+  geom_point(data = modeltester, aes(x = avg.head,
+                              y = h.avg.model,
+                              color = shed), size = 3)+
+   #geom_smooth(method = 'lm', se = FALSE)+
+  labs(x = "Measured average head temp (C)",
+       y = "Modeled average head temp")+
+  theme_invis()
+plotJPwants
+
+ggsave(plotJPwants, filename = "avgheadmodel.png",  bg = "transparent",
+       width = 7.5, height = 5, units = c("in"))
+
+```
+
+```{r}
+#formatting time for timeseries
+dogg$rnd.dates <- ymd_hms(dogg$rnd.dates)
+#removing value from RMO that is crazy high
+which(rogg$Value > 20)
+# 28721 28722
+rogg$Value[28722] <- NA
+rogg$Value[28721] <- NA
+
+```
+
+Timeseries
+```{r}
+rogg <- dogg
+rogg <- rogg %>% mutate_each(list(as.character), shed, Site)
+rogg$shed <- factor(rogg$shed, levels = c("GG", "ULB", "RMO", "MUL"))
+rogg$Site <- factor(rogg$Site, levels = c("Wind", "Glac", "Land",
+            "ULB2", "ULB3", "ULB4",
+            "RMO1", "RMO2", "RMO3",
+            "MUL2", "MUL4", "MUL7"))
+
+#making colors for the plots
+breaks <- c("Wind", "Glac", "Land",
+            "ULB2", "ULB3", "ULB4",
+            "RMO1", "RMO2", "RMO3",
+            "MUL2", "MUL4", "MUL7")
+colors <- c("firebrick4", "firebrick3", "firebrick2",
+            "slateblue4", "slateblue3", "slateblue2",
+            "sienna4", "sienna3", "sienna2",
+            "seagreen", "seagreen3", "seagreen1")
+
+timepanel <- ggplot(rogg, aes(color = Site))+
+  geom_line(aes(x = rnd.dates,
+               y = Value))+
+  geom_line(aes(x = rnd.dates,
+                y = head.temp))+
+  theme_classic()+
+  theme(panel.border = element_rect(colour = "black"),
+        rect = element_rect(fill = "transparent"),
+         panel.background = element_rect(fill = "transparent"), # bg of the panel
+    plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+    panel.grid.major = element_blank(), # get rid of major grid
+    panel.grid.minor = element_blank(), # get rid of minor grid
+    legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+    legend.box.background = element_rect(fill = "transparent"),
+    strip.background = element_blank(),
+    text= element_text(size=17))+
+  facet_grid(cols = vars(shed), rows = vars(type))+
+  scale_color_manual(breaks = breaks,
+                    values = colors)
+timepanel
+
+ggsave(timepanel, filename = "timepanel.png",  bg = "transparent",
+       width = 24, height = 5, units = c("in"))
+```
+
+Head temp vs Down Temps
+```{r}
+shed.breaks <- c("GG","ULB","RMO","MUL")
+shed.colors <- c("firebrick4","slateblue4","sienna2","seagreen1")
+
+#head temps vs down temps
+down.heads <- ggplot(dogg, aes(x = head.temp,
+                               y = Value))+
+  #stat_density2d(size = 0.5)+
+  scale_color_brewer(palette = "Dark2")+
+  geom_point(aes(color = shed),
+             size = 2, alpha = 0.5)+
+  #geom_smooth(method = 'lm', se = FALSE, color = "black")+
+  theme_invis()+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors)+
+  labs(x = "Head Temperature (C)",
+       y = "Downstream Temperature (C)")
+down.heads
+
+ggsave(down.heads, filename = "headvsdown.png",  bg = "transparent",
+       width = 7.5, height = 5, units = c("in"))
+```
+

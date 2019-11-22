@@ -186,6 +186,13 @@ h.avg.model <- lm(head.dmean ~
                 slope.mean  +
                 elev.mean + 
                 UAA..ft2.,data = dogg)
+#run regression for just moses creek measured values and see if it is a better predictor than using all of the measurements
+moses.dogg <- filter(dogg, shed == "RMO")
+#run lm
+mos.h.avg.model <- lm(head.dmean ~
+                        slope.mean +
+                        elev.mean +
+                        UAA..ft2., data = moses.dogg)
 
 modeltester <- dogg%>%
   select(Site, shed, slope.mean, elev.mean, AREA, UAA..ft2., head.temp)%>%
@@ -195,11 +202,16 @@ modeltester <- dogg%>%
    8.329e+00)%>%
   group_by(Site)%>%
   mutate(avg.head = mean(head.temp, na.rm = TRUE))
+#using the model results for moses in this plot
+moss <- read.csv("modelmaybemoses_11_21.csv")
 
-plotJPwants <- ggplot(modeltester, aes(x = avg.head,
-                                       y = h.avg.model))+
+plotJPwants <- ggplot()+
   theme_classic()+
-  geom_point(aes(color = shed), size = 3)+
+  geom_point(data = modeltester, aes(x = avg.head,
+                              y = h.avg.model,
+                              color = shed), size = 3)+
+  geom_point(data = moss, aes(x = h.avg.model,
+                              y = h.avg.model))+
    #geom_smooth(method = 'lm', se = FALSE)+
   labs(x = "Measured average head temp (C)",
        y = "Modeled average head temp")
@@ -277,34 +289,50 @@ sapply(summaries, function(x) c(r_sq = x$r.squared,
 Attempting to apply the model to the supposed channel heads in moses creek
 ```{r}
 #reading in topo metrics from dem identified channel heads
-slope <- read.csv("maybemosslope.csv")
-elev <- read.csv("maybemoselev.csv")
-maye <- read.csv("maybe_moses.csv")
+UAA <- read.csv("outputs/UAA.csv")
+elev <- read.csv("outputs/elev.csv")
+slope <- read.csv("outputs/slope.csv")
+ids <- read.csv("ids2.csv")
+#remove 83, 69, 59, 34, 26, 17, 16, 14, 7, 3
+UAA <- filter(UAA, MEAN > 3)
 
+ids$Site <- ids$pour_ord
 slope <- select(slope, OBJECTID, MEAN)%>%
   rename(Site = OBJECTID, slope.mean = MEAN)
 elev <- select(elev, OBJECTID, MEAN)%>%
   rename(Site = OBJECTID, elev.mean = MEAN)
-maybe <- select(maye, Site, type, uaa_ft2)
+UAA <- select(UAA, OBJECTID, AREA)%>%
+  rename(Site = OBJECTID, uaaft2 = AREA)
 
-mosay <- left_join(maybe, slope, by = "Site")
-mosay <- left_join(mosay, elev, by = "Site")
+mosay <- inner_join(UAA, slope, by = "Site")
+chief <- inner_join(mosay, elev, by = "Site")
+
+ggplot()+
+  geom_boxplot(data = chief, aes(y = uaaft2))+
+  theme_classic()
 ```
+
+```{r}
+#boxplots to look at model moses data to see if I am smoking crack
+ggplot(data = dogg)+
+  geom_boxplot(aes(x = ))
+```
+
 
 ```{r}
 #apply the model to the hypothetical sites
 #head avg temp model
-mostest <- mosay%>%
+mostest <- chief%>%
   mutate(h.avg.model = 1.261e-01 * slope.mean + 
   -6.722e-04 * elev.mean + 
-   5.125e-06 * uaa_ft2+
+   5.125e-06 * uaaft2+
    8.329e+00)
 
-modelmaybemose <- left_join(maye, mostest, by = "Site")%>%
-  select(Site, type.x, NEAR_X, NEAR_Y, h.avg.model)
+modelmaybemose <- left_join(ids, mostest, by = "Site")%>%
+  select(Site, NEAR_X, NEAR_Y, h.avg.model)
 
 mop <- modelmaybemose[complete.cases(modelmaybemose),]
-#write.csv(mop, file = "modelmaybemoses_11_14.csv")
+#write.csv(mop, file = "modelmaybemoses_11_21.csv")
 ```
 
 11/14
@@ -377,4 +405,43 @@ gribregulation <- rollapply(last20.reg, width = 25,
 ```
 got some crazy error messages, I think there are problems with the factor levels- need to revisit with fresh eyes
 
+REading in new ICP data from Christa!!!
+```{r}
+elm <- read.csv("ICP results.csv")
+
+elm <- filter(elm, type == "samp")%>%
+  select(-No., -Name)%>%
+  gather("element", "measurement", -type, -shed, -site, -date, Sodium, Ammonium, Potassium, Magnesium, Calcium, Fluoride, Chloride, Bromide, Nitrate, Sulfate)%>%
+    mutate(measurement = replace(measurement, measurement == "n.a.", NA))%>%  
+    mutate_each(list(as.double), measurement)%>% 
+    mutate_each(list(as.character), site, type, shed)
+elm$date <- mdy(elm$date)
+
+ggplot(elm, aes(x = element,
+                y = site))+
+  geom_tile(aes(fill = measurement))+
+   scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(legend.position = "none", 
+        axis.ticks = element_blank(), 
+        axis.text.x = element_text(size=12, 
+                                   angle=90, hjust=0, colour="black"),
+        axis.text.y = element_text(size=12, 
+                                   angle=90, hjust=0, colour="black"))+
+  #scale_fill_gradient(low = "red",high = "steelblue")
+  theme_classic()
+
+fd=data.frame(x = rep(c("x","y","z"),3), 
+              y=c("a","b","c","b","c","a","c","a","b"),
+              z=c(0,1,0,1,1,1,0,0,1))
+
+# plot
+(p <- ggplot(fd, aes(x, y, height=.5, width=.5)) + geom_tile(aes(fill = z)) 
+ + scale_fill_gradient(low = "white",high = "steelblue", limits=c(0,1)) 
+ + theme_grey() 
+ + labs(x = "", y= "") 
+ + scale_x_discrete(expand = c(0, 0)) 
+ + scale_y_discrete(expand = c(0, 0)) 
+ + theme(legend.position = "none", axis.ticks = element_blank(), axis.text.x = element_text(size=12, angle=90, hjust=0, colour="black")))
+```
 
