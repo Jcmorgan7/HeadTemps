@@ -267,7 +267,7 @@ JP <- mutate(JP, UAA.m2 = UAA..ft2.* 0.3048 *0.3048, elev.mean.m = elev.mean * 0
 
 #formatting time
 grib$rnd.dates <- ymd_hms(grib$rnd.dates)
-grib$rnd.dates <- date(grib$rnd.dates)
+#grib$rnd.dates <- date(grib$rnd.dates)
 
 grib.base <- lm(head.dmean ~ slope.mean + UAA..ft2.  + air.d.mean, data = grib)
 summary(grib.base)
@@ -279,6 +279,36 @@ dd <- ddays(25)
 #running regressions
 #grib
 #last5
+custom_stat_fun_2 <- function(x, na.rm = TRUE) {
+    # x     = numeric vector
+    # na.rm = boolean, whether or not to remove NA's
+    
+    m  <- mean(x, na.rm = na.rm)
+    s  <- sd(x, na.rm = na.rm)
+    hi <- m + 2*s
+    lo <- m - 2*s
+    
+    ret <- c(mean = m, stdev = s, hi.95 = hi, lo.95 = lo) 
+    return(ret)
+}
+shooty <- function(x, na.rm = TRUE){
+  lm(head.dmean ~ gg.air + slope.mean + UAA..ft2., data = x)
+}
+
+#data frame for results of for loop regression
+rdata <- data.frame()
+
+for(i in 1:length(length)){
+  dummy <- last20[i,]
+  hap <- lm(head.dmean ~ gg.air + slope.mean + UAA..ft2., data = dummy)
+  sum <- summary(hap)
+  #output
+  #column with the date
+  rdata$date[i] <- last20$DATE[i]
+  rdata$date[i] <- sum$r.squared[i]
+
+}
+
 my_lms <- lapply(1:2, function(x) lm(grib$head.dmean ~ last5$TOBS + grib$slope.mean + grib$UAA..ft2.))
 
 sapply(summaries, function(x) c(r_sq = x$r.squared, 
@@ -436,7 +466,7 @@ fd=data.frame(x = rep(c("x","y","z"),3),
               z=c(0,1,0,1,1,1,0,0,1))
 
 # plot
-(p <- ggplot(fd, aes(x, y, height=.5, width=.5)) + geom_tile(aes(fill = z)) 
+p <- ggplot(fd, aes(x, y, height=.5, width=.5)) + geom_tile(aes(fill = z)) 
  + scale_fill_gradient(low = "white",high = "steelblue", limits=c(0,1)) 
  + theme_grey() 
  + labs(x = "", y= "") 
