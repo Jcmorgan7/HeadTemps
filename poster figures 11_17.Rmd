@@ -238,3 +238,106 @@ ggsave(down.heads, filename = "headvsdown.png",  bg = "transparent",
        width = 7.5, height = 5, units = c("in"))
 ```
 
+R2 through time- rolling multi regs
+```{r}
+#Baseline regressions- the control for this part of the poster
+#using all of the sites
+h.avg.model <- lm(head.dmean ~ 
+                slope.mean  +
+                elev.mean + 
+                UAA..ft2.,data = dogg)
+summary(h.avg.model)
+hair.avg.model <- lm(head.dmean ~ 
+                slope.mean  +
+                elev.mean + 
+                UAA..ft2. +
+                air.d.mean  ,data = dogg)
+summary(hair.avg.model)
+#using just gg sites- elevation removed bc it made no contribution
+grib.base <- lm(head.dmean ~ slope.mean + UAA..ft2.  + elev.mean, air.d.mean, data = grib)
+summary(grib.base)
+
+grib.base.noair <- lm(head.dmean ~ slope.mean + UAA..ft2. + elev.mean, data = grib)
+summary(grib.base.noair)
+
+```
+
+Trying to add other two air temps to model to see if it improves
+```{r}
+#my custom function
+rickroll7 <- function(x, na.rm = TRUE){
+  roll <- x
+  model <- lm(wind.ts$head.dmean ~  
+                #roll$TOBS  +
+                roll$TMAX +
+                roll$TMIN +
+                wind.ts$slope.mean + 
+                wind.ts$UAA..ft2. + 
+                wind.ts$elev.mean)
+  r <- summary(model)$r.squared
+  return(r)
+}
+#my attempt to do a rolling calculation
+#success!
+#last 5 years
+gribregulation <- last5%>%
+  tq_mutate(select = c(TMIN, TMAX),
+                       #, TOBS),
+            mutate_fun = rollapply,
+            width = 26,
+            align = "right",
+            by.column = FALSE,
+            FUN = rickroll)
+
+test <- ggplot(gribregulation, aes(x = DATE,
+                           y = value))+
+  geom_line()+
+  theme_classic()+
+  labs(title = "Wind with TMIN and TMAX", y = "R^2")
+
+test + geom_hline(yintercept = 0.7557, color = "red")+
+  geom_hline(yintercept = 0.8973, color = "blue")
+```
+
+Wind
+```{r}
+#starting with running the others individually
+w.ts <- filter(grib, Site == "Wind")
+w.ts$rnd.dates <- date(w.ts$rnd.dates)
+w.ts <- unique(w.ts)
+#w.ts <- ls.ts[-26,]
+
+#applying topo metrics to last 20 years of temp data
+rickroll4 <- function(x, na.rm = TRUE){
+  roll <- x
+  model <- lm(w.ts$head.dmean ~  
+                roll  + 
+                w.ts$slope.mean + 
+                w.ts$UAA..ft2. + 
+                w.ts$elev.mean)
+ 
+  r <- summary(model)$r.squared
+  return(r)
+}
+#my attempt to do a rolling calculation
+#success!
+#last 5 years
+w.reg <- last5%>%
+  tq_mutate(select = TOBS,
+            mutate_fun = rollapply,
+            width = 26,
+            align = "right",
+            by.column = FALSE,
+            FUN = rickroll4)
+  
+w.regplot <- ggplot(w.reg, aes(x = DATE,
+                           y = value))+
+  geom_line()+
+  theme_classic()+
+  labs(title = "Wind with TOBS", y = "R^2")
+
+
+w.regplot + geom_hline(yintercept = 0.7557, color = "red")+
+  geom_hline(yintercept = 0.8973, color = "blue")
+```
+

@@ -74,6 +74,9 @@ rate.box
 #results of the multi-linear model
 h.mean.model <- lm(head.temp ~ slope.mean  + elev.mean + UAA..ft2. + air.d.mean, data = dogg)
 summary(h.mean.model)
+
+h.model <- lm(head.temp ~ slope.mean  + elev.mean + UAA..ft2., data = dogg)
+summary(h.model)
 ```
 ```{r}
 #make a data frame to use to test the model equation
@@ -186,6 +189,15 @@ h.avg.model <- lm(head.dmean ~
                 slope.mean  +
                 elev.mean + 
                 UAA..ft2.,data = dogg)
+summary(h.avg.model)
+hair.avg.model <- lm(head.dmean ~ 
+                slope.mean  +
+                elev.mean + 
+                UAA..ft2. +
+                air.d.mean  ,data = dogg)
+summary(hair.avg.model)
+
+
 #run regression for just moses creek measured values and see if it is a better predictor than using all of the measurements
 moses.dogg <- filter(dogg, shed == "RMO")
 #run lm
@@ -271,6 +283,9 @@ grib$rnd.dates <- ymd_hms(grib$rnd.dates)
 
 grib.base <- lm(head.dmean ~ slope.mean + UAA..ft2.  + air.d.mean, data = grib)
 summary(grib.base)
+
+grib.base.noair <- lm(head.dmean ~ slope.mean + UAA..ft2. + elev.mean, data = grib)
+summary(grib.base.noair)
 
 dd <- ddays(25)
 ```
@@ -372,6 +387,12 @@ modelmaybemose <- left_join(ids, mostest, by = "Site")%>%
 
 mop <- modelmaybemose[complete.cases(modelmaybemose),]
 #write.csv(mop, file = "modelmaybemoses_11_21.csv")
+
+#to compare the model against the actual temps I need to use mostest
+xarxes <- select(modeltester, -head.temp)
+xarxes <- unique(xarxes)
+xarxes <- xarxes[-6,] #remove duplicate MUL2
+
 ```
 
 11/14
@@ -406,7 +427,7 @@ windy <- as.zoo(wind)
 rr <- rollapply(seat, width = 36,
   FUN = function(z) coef(lm(y ~ y1 + y12, data = as.data.frame(z))),
   by.column = FALSE, align = "right")
-
+#this is a failed method
 
 
 test <- grib1%>%
@@ -456,7 +477,9 @@ rickroll <- function(x, na.rm = TRUE){
   r <- summary(model)$r.squared
   return(r)
 }
-#my attempt to do a rolling calculat
+#my attempt to do a rolling calculation
+#success!
+#last 5 years
 gribregulation <- last5%>%
   tq_mutate(select = TOBS,
             mutate_fun = rollapply,
@@ -470,11 +493,14 @@ gribregulation <- last5%>%
                      FUN = rickroll,
                      by.column = FALSE, align = "right")
   
-ggplot(gribregulation, aes(x = DATE,
+z <- ggplot(gribregulation, aes(x = DATE,
                            y = value))+
   geom_line()+
   theme_classic()
 
+z + geom_hline(yintercept = 0.7557, color = "red")+
+  geom_hline(yintercept = 0.8973, color = "blue")
+#last 20 years
 gribregulation20 <- last20%>%
   tq_mutate(select = TOBS,
             mutate_fun = rollapply,
@@ -484,11 +510,14 @@ gribregulation20 <- last20%>%
             FUN = rickroll)
   
   
-ggplot(gribregulation20, aes(x = DATE,
+l <- ggplot(gribregulation20, aes(x = DATE,
                            y = value))+
-  geom_line()+
+  geom_point()+
   theme_classic()
 
+l + geom_hline(yintercept = 0.7557, color = "red")+
+  geom_hline(yintercept = 0.8973, color = "blue")
+#entire record
 gribregulation20 <- cull%>%
   tq_mutate(select = TOBS,
             mutate_fun = rollapply,
@@ -505,7 +534,263 @@ ggplot(cull, aes(x = DATE,
 ```
 got some crazy error messages, I think there are problems with the factor levels- need to revisit with fresh eyes
 
-REading in new ICP data from Christa!!!
+```{r}
+#wind regressions to compare to model results above
+wind.noair <- lm(head.dmean ~ slope.mean + UAA..ft2. + elev.mean, data = wind.ts)
+summary(wind.noair)
+```
+```{r}
+#time period that correlates best with wind is
+wind <- gribregulation[270:295,]
+glac <- gl.reg[271:296,]
+land <- ls.reg[271:296,]
+
+
+#need to find a way to run the regression for all three of the sites at once- a combined r2 value
+
+#starting with running the others individually
+ls.ts <- filter(grib, Site == "Land")
+ls.ts$rnd.dates <- date(ls.ts$rnd.dates)
+ls.ts <- unique(ls.ts)
+
+gl.ts <- filter(grib, Site == "Glac")
+gl.ts$rnd.dates <- date(gl.ts$rnd.dates)
+gl.ts <- unique(gl.ts)
+
+#applying topo metrics to last 20 years of temp data
+rickroll2 <- function(x, na.rm = TRUE){
+  roll <- x
+  model <- lm(gl.ts$head.dmean ~  
+                roll  + 
+                gl.ts$slope.mean + 
+                gl.ts$UAA..ft2. + 
+                gl.ts$elev.mean)
+ 
+  r <- summary(model)$r.squared
+  return(r)
+}
+#my attempt to do a rolling calculation
+#success!
+#last 5 years
+gl.reg <- last5%>%
+  tq_mutate(select = TOBS,
+            mutate_fun = rollapply,
+            width = 26,
+            align = "right",
+            by.column = FALSE,
+            FUN = rickroll2)
+  
+glacier.regplot <- ggplot(gl.reg, aes(x = DATE,
+                           y = value))+
+  geom_line()+
+  theme_classic()
+
+glacier.regplot + geom_hline(yintercept = 0.7557, color = "red")+
+  geom_hline(yintercept = 0.8973, color = "blue")
+```
+
+Landslide
+```{r}
+#starting with running the others individually
+ls.ts <- filter(grib, Site == "Land")
+ls.ts$rnd.dates <- date(ls.ts$rnd.dates)
+ls.ts <- unique(ls.ts)
+ls.ts <- ls.ts[-26,]
+
+#applying topo metrics to last 20 years of temp data
+rickroll3 <- function(x, na.rm = TRUE){
+  roll <- x
+  model <- lm(ls.ts$head.dmean ~  
+                roll  + 
+                ls.ts$slope.mean + 
+                ls.ts$UAA..ft2. + 
+                ls.ts$elev.mean)
+ 
+  r <- summary(model)$r.squared
+  return(r)
+}
+#my attempt to do a rolling calculation
+#success!
+#last 5 years
+ls.reg <- last5%>%
+  tq_mutate(select = TOBS,
+            mutate_fun = rollapply,
+            width = 26,
+            align = "right",
+            by.column = FALSE,
+            FUN = rickroll3)
+  
+ls.regplot <- ggplot(ls.reg, aes(x = DATE,
+                           y = value))+
+  geom_line()+
+  theme_classic()
+
+ls.regplot + geom_hline(yintercept = 0.7557, color = "red")+
+  geom_hline(yintercept = 0.8973, color = "blue")
+```
+
+Wind
+```{r}
+#starting with running the others individually
+w.ts <- filter(grib, Site == "Wind")
+w.ts$rnd.dates <- date(w.ts$rnd.dates)
+w.ts <- unique(w.ts)
+#w.ts <- ls.ts[-26,]
+
+#applying topo metrics to last 20 years of temp data
+rickroll4 <- function(x, na.rm = TRUE){
+  roll <- x
+  model <- lm(w.ts$head.dmean ~  
+                roll  + 
+                w.ts$slope.mean + 
+                w.ts$UAA..ft2. + 
+                w.ts$elev.mean)
+ 
+  r <- summary(model)$r.squared
+  return(r)
+}
+#my attempt to do a rolling calculation
+#success!
+#last 5 years
+w.reg <- last5%>%
+  tq_mutate(select = TOBS,
+            mutate_fun = rollapply,
+            width = 26,
+            align = "right",
+            by.column = FALSE,
+            FUN = rickroll4)
+  
+ls.regplot <- ggplot(ls.reg, aes(x = DATE,
+                           y = value))+
+  geom_line()+
+  theme_classic()
+
+ls.regplot + geom_hline(yintercept = 0.7557, color = "red")+
+  geom_hline(yintercept = 0.8973, color = "blue")
+```
+
+```{r}
+library(gridExtra)
+
+wind <- gribregulation[270:295,]
+wind.back <- gribregulation[270:320,]
+glac <- gl.reg[271:296,]
+glac.back <- gl.reg[271:321,]
+land <- ls.reg[271:296,]
+land.back <- ls.reg[271:321,]
+
+rain <- ggplot(wind.back, aes(x = DATE,
+                 y = PRCP))+
+  geom_bar(stat = "identity")+
+  xlab("")+
+  theme_classic()+
+  theme(axis.text.x=element_blank())
+
+manyrs <- ggplot()+
+  geom_line(data = wind.back, mapping = aes(x = DATE,
+                                            y = value),
+            color = "firebrick")+
+  geom_line(data = land.back, mapping = aes(x = DATE,
+                                            y = value),
+            color = "slateblue")+
+  geom_line(data = glac.back, mapping = aes(x = DATE,
+                                            y = value), 
+            color = "seagreen")+
+  theme_classic()+
+  geom_hline(yintercept = 0.7557, color = "red")+
+  geom_hline(yintercept = 0.8973, color = "blue")
+
+  lay <- rbind(c(1),
+             c(2),
+             c(2))
+grid.arrange(grobs = gs, layout_matrix = lay)
+
+
+grid.arrange(rain, 
+             manyrs, layout_matrix = lay)
+```
+
+Dotplot
+```{r}
+#combine the regression results of all three into a data frame
+gr <- select(wind, DATE, value)%>%
+  rename(wind = value)
+oi <- select(land, DATE, value)%>%
+  rename(land = value)
+wn <- glac %>% rename(glac = value)
+
+oiwn <- inner_join(wn, oi, by = "DATE")
+groiwn <- inner_join(oiwn, gr, by = "DATE")
+#plot of precip
+rain <- ggplot(wind, aes(x = DATE,
+                 y = PRCP))+
+  geom_bar(stat = "identity")+
+  xlab("")+
+  theme_classic()+
+  theme(axis.text.x=element_blank())
+
+#restructure data 
+groiwn2 <- groiwn %>%
+  gather(key = "Site", value = "r2", c(glac, land, wind))
+
+manyrs <- ggplot(data = groiwn2, aes(x = DATE))+
+  geom_point(aes(y = r2, shape = Site))+
+  theme_classic()+
+  geom_hline(yintercept = 0.7557, color = "red")+
+  geom_hline(yintercept = 0.8973, color = "blue")
+
+  lay <- rbind(c(1),
+             c(2),
+             c(2))
+grid.arrange(grobs = gs, layout_matrix = lay)
+
+
+grid.arrange(rain, 
+             manyrs, layout_matrix = lay)
+```
+  
+  
+Trying to add other two air temps to model to see if it improves
+```{r}
+#my custom function
+rickroll7 <- function(x, na.rm = TRUE){
+  roll <- x
+  model <- lm(wind.ts$head.dmean ~  
+                #roll$TOBS  +
+                roll$TMAX +
+                roll$TMIN +
+                wind.ts$slope.mean + 
+                wind.ts$UAA..ft2. + 
+                wind.ts$elev.mean)
+  r <- summary(model)$r.squared
+  return(r)
+}
+#my attempt to do a rolling calculation
+#success!
+#last 5 years
+gribregulation <- last5%>%
+  tq_mutate(select = c(TMIN, TMAX),
+                       #, TOBS),
+            mutate_fun = rollapply,
+            width = 26,
+            align = "right",
+            by.column = FALSE,
+            FUN = rickroll)
+
+test <- ggplot(gribregulation, aes(x = DATE,
+                           y = value))+
+  geom_line()+
+  theme_classic()+
+  labs(title = "Wind with TMIN and TMAX")
+
+test + geom_hline(yintercept = 0.7557, color = "red")+
+  geom_hline(yintercept = 0.8973, color = "blue")
+```
+
+
+
+  REading in new ICP data from Christa!!!
+
 ```{r}
 elm <- read.csv("ICP results.csv")
 
@@ -630,5 +915,14 @@ data = all %>%
           se = round(se, 5),
           pvalue = round(pvalue, 5)) %>% 
   select(d, i, beta, se, pvalue)
+```
+
+```{r}
+wo.mul4 <- filter(dogg, Site != "MUL4")
+wop <- lm(head.dmean ~ 
+                slope.mean  +
+                elev.mean + 
+                UAA..ft2.,data = wo.mul4)
+summary(wop)
 ```
 
