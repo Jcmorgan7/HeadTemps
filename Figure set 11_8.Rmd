@@ -997,6 +997,7 @@ atak.hour <- atak.hour%>%
 
 atak.hour <- unique(atak.hour)
 atak.hour <- atak.hour[complete.cases(atak.hour),]
+atak.hour <- as.data.frame(atak.hour)
 
 hourz <- select(atak.hour, hour)
 hourz <- unique(hourz)
@@ -1009,13 +1010,88 @@ for(o in 1:length(hourz$hour)){
   r2 <- summary(reg)$r.squared
   #output
   temp <- mutate(df, r2 = r2)
-  temp <- as.data.frame(temp)
-  if(k == 1) alldat <- temp
-  if(k > 1) alldat <- rbind(alldat, temp)
+  if(o == 1) alldat <- temp
+  if(o > 1) alldat <- rbind(alldat, temp)
 }
 
 atakr.hour <- alldat
 ggplot(atakr.hour, aes(x = hour, y = r2))+
   geom_point()+
   theme_classic()
+
+gour <- atakr.hour%>%
+  select(Site, shed, hour, head.hmean, air.hmean, r2)
+```
+
+
+Calculate r2 at different time scales using the time every ten minutes
+```{r}
+#calculate lm for each 10 min interval at each site
+atak.min <- unique(atak)
+atak.min <- atak.min[complete.cases(atak.min),]
+
+minz <- select(atak.min, rnd.dates)
+minz <- unique(minz)
+
+for(o in 1:length(minz$rnd.dates)){
+  mint <- minz$rnd.dates[o]
+  df <- filter(atak.min, rnd.dates == mint)
+  reg <- lm(head.temp ~ airT + UAA..ft2. + elev.mean + slope.mean,
+            data = df)
+  r2 <- summary(reg)$r.squared
+  #output
+  temp <- mutate(df, r2 = r2)
+  if(o == 1) alldat <- temp
+  if(o > 1) alldat <- rbind(alldat, temp)
+}
+
+atakr.min <- alldat
+mast <- atakr.min%>%
+  rename(r2.minpmin = r2) #minpmin- min pred by actual measurements, 10 min inc values
+mast$hour <- floor_date(mast$rnd.dates, unit = "hour")
+
+
+mast <- left_join(mast, gour, by = c("Site", "shed", "hour"))%>% #hour pred by hmean
+  rename(r2.hourphour = r2)
+
+gai <- select(atakr.day, Site, shed, date, r2)
+mast <- left_join(mast, gai,  by = c("Site", "shed", "date"))%>% #day pred by dmean
+  rename(r2.daypday = r2)
+
+#Calculate
+#day pred by min
+#hour pred by min
+for(o in 1:length(minz$rnd.dates)){
+  mint <- mast$rnd.dates[o]
+  df <- filter(mast, rnd.dates == mint)
+  reg <- lm(head.dmean ~ airT + UAA..ft2. + elev.mean + slope.mean,
+            data = df)
+  reg2 <- lm(head.hmean ~ airT + UAA..ft2. + elev.mean + slope.mean,
+            data = df)
+  r2 <- summary(reg)$r.squared
+  r2.2 <- summary(reg2)$r.squared
+  #output
+  temp <- mutate(df, daypmin = r2, hourpmin = r2.2)
+  if(o == 1) alldat <- temp
+  if(o > 1) alldat <- rbind(alldat, temp)
+}
+
+hup <- select(alldat, Site, shed, rnd.dates, daypmin, hourpmin)
+mast <- left_join(mast, hup, by = c("Site", "shed", "rnd.dates"))%>%
+  rename(r2.daypmin = daypmin, r2.hourpmin = hourpmin)
+
+masty <- unique(mast)
+hasty <- select(masty, rnd.dates, r2.daypday, r2.hourphour, r2.minpmin)%>%
+  gather(key = "r2.type", value = "value", -rnd.dates)
+
+hasty$r2.type <- factor(hasty$r2.type)
+hasty$r2.type <- factor(hasty$r2.type, levels = c("r2.minpmin","r2.daypday", "r2.hourphour"))
+hasty <- unique(hasty)
+
+p <-ggplot(hasty, aes(x = rnd.dates,
+                      y = value))+
+  geom_boxplot(aes(color = r2.type))+
+  theme_classic()
+p  
+#xlim("2019-07-02 12:00:00 UTC", "2019-07-06 12:00:00 UTC")
 ```
