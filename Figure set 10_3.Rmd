@@ -658,6 +658,8 @@ brushed <- brush%>%
 
 
 dogg <- left_join(d.crater.dill, brushed, by = c("Site", "shed", "rnd.dates"))
+trip <- inner_join(d.crater.dill, brushed, by = c("Site", "shed", "rnd.dates"))
+
 
 #write.csv(dogg, file = "Tempsanddata_8_11.csv")
 #write.csv(warm, file = "straightlinerates11_8.csv")

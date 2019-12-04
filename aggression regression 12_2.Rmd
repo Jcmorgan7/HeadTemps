@@ -65,6 +65,8 @@ ggplot(prediction, aes(x = pred,
                        y = head.dmean))+
   geom_point(aes(color = shed))+
   geom_abline(slope = 1, intercept = 0)+
+  xlim(9, 14)+
+  ylim(9, 14)+
   theme_classic()
 
 atakr.day <- alldat
@@ -120,6 +122,13 @@ ggplot(prediction.hour, aes(x = pred,
 #looking at just mull creek predictions
 pred.mul <- filter(prediction.hour, shed == "MUL")
 ggplot(pred.mul, aes(x = pred,
+                       y = head.hmean))+
+  geom_point(aes(color = Site))+
+    geom_abline(slope = 1, intercept = 0)+
+  theme_classic()
+#look at just ULB to find the shed that is poorly predicted
+pred.ulb <- filter(prediction.hour, shed == "ULB")
+ggplot(pred.ulb, aes(x = pred,
                        y = head.hmean))+
   geom_point(aes(color = Site))+
     geom_abline(slope = 1, intercept = 0)+
@@ -227,3 +236,144 @@ p
 ```
 
 Do the regresssions again, but use NOAA airT from GG and elsewhere
+```{r}
+grog <- read.csv("Tempsanddata_11_8.csv")
+grop <- grog %>%
+  mutate(date = date(rnd.dates)) %>%
+  select(Site, shed, date, d.mean, UAA..ft2., slope.mean, elev.mean, head.dmean, air.d.mean, air.d.min, air.d.max)
+
+grop <- unique(grop)
+
+
+scully <- read.csv("Cullowheerain.csv")
+scully$DATE <- ymd(cull$DATE)
+#subsetting the time frame of interest
+start <- which(scully$DATE == mdy("6-13-19"))
+end <- which(scully$DATE == mdy("7-8-19"))
+noat <- scully[start:end,]
+# use this and TMIN and TMAX instead of avgs used in previous regs
+#join the topometrics and temps to NOAA data
+
+noap <- noat%>%
+  rename(date = DATE)
+
+noap$TMAX <- as.double(noap$TMAX)
+noap$TMIN <- as.double(noap$TMIN)
+
+noap <- select(noap, date, TMAX, TMIN, TOBS)
+
+noak <- left_join(grop, noap, by = "date")
+#noak <- noak[complete.cases(noak),]
+#formatted data for calculations
+```
+
+```{r}
+#time to calc r2 and coeff for dmean, hmean, and every ten minutes using NOAA data
+#making minutes df
+minz <- select(noak, rnd.dates)
+minz <- unique(minz)
+
+
+
+noak$hour <- noak$rnd.dates
+noak$hour <- floor_date(noak$rnd.dates, unit = "hour")
+noak <- noak%>%
+  group_by(hour, Site)%>%
+  mutate(head.hmean = mean(head.temp), air.hmean = mean(airT))
+
+noak <- unique(noak)
+noak <- as.data.frame(noak)
+
+hourz <- select(noak, hour)
+hourz <- unique(hourz)
+
+noak$TMAX <- as.double(noak$TMAX)
+noak$TMIN <- as.double(noak$TMIN)
+for(o in 1:length(minz$rnd.dates)){
+  mint <- minz$rnd.dates[o]
+  df <- filter(noak, rnd.dates == mint)
+  reg <- lm(head.temp ~ TMIN + TMAX + UAA..ft2. + elev.mean + slope.mean,
+            data = df)
+  r2 <- summary(reg)$r.squared
+  co <- coefficients(reg)
+  #output
+  temp <- mutate(df, r2 = r2, co.int = co[1], 
+                              co.tmin = co[2],
+                              co.tmax = co[3],
+                              co.UAA = co[4],
+                              co.elev = co[5],
+                              co.slope = co[6])
+  if(o == 1) alldat <- temp
+  if(o > 1) alldat <- rbind(alldat, temp)
+}
+
+noak <- left_join(noak, alldat, by = )
+
+for(k in 1:length(dayz$date)){
+  day <- dayz$date[k]
+  df <- filter(noak, date == day)%>%
+    select(-Value, -rnd.dates, -head.temp, -airT, - hour, -head.hmean, -air.hmean)
+  df <- unique(df)
+  reg <- lm(head.dmean ~  TMIN  
+            + UAA..ft2.
+            + elev.mean 
+            + slope.mean,
+            data = df)
+  r2 <- summary(reg)$r.squared
+  co <- coefficients(reg)
+  #output
+  temp <- mutate(df, r2 = r2, co.int = co[1], 
+                              co.tmin = co[2],
+                              co.UAA = co[4],
+                              co.elev = co[5],
+                              co.slope = co[6])
+  if(k == 1) alldat <- temp
+  if(k > 1) alldat <- rbind(alldat, temp)
+}
+
+test <- select(noak, UAA..ft2., elev.mean, head.dmean, TMAX, TMIN, TOBS)
+unique(test)
+plot(test)
+```
+
+```{r}
+
+brus <- select(brush, site, shed, Value, rnd.dates, d.mean, airT, air.d.mean)
+#trip has some good stuff
+head(trip)
+
+summary(lm(head.dmean))
+
+
+dayz <- select(noak, date)
+dayz <- unique(dayz)
+
+noak.ulb <- filter(noak, shed %in% c("ULB", "GG"))
+
+ggplot(noak, aes(x = air.d.mean))+
+  geom_line(aes(y = TMAX, color = shed))+
+  geom_line(aes(y = TMIN, color = shed))+
+  theme_classic()
+
+for(k in 1:length(dayz$date)){
+  day <- dayz$date[k]
+  df <- filter(noak.rmo, date == day)
+  reg <- lm(head.dmean ~  TMIN  
+            + UAA..ft2.
+            + elev.mean 
+            + slope.mean,
+            data = df)
+  r2 <- summary(reg)$r.squared
+  co <- coefficients(reg)
+  #output
+  temp <- mutate(df, r2 = r2, co.int = co[1], 
+                              co.tmin = co[2],
+                              co.UAA = co[4],
+                              co.elev = co[5],
+                              co.slope = co[6])
+  if(k == 1) alldat <- temp
+  if(k > 1) alldat <- rbind(alldat, temp)
+}
+
+```
+

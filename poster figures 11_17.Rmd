@@ -195,7 +195,9 @@ timepanel <- ggplot(rogg, aes(color = Site))+
   geom_line(aes(x = rnd.dates,
                 y = head.temp))+
   theme_classic()+
-  theme(panel.border = element_rect(colour = "black"),
+  labs(x = "", y = "Water temperature (C)")+
+  theme(legend.position = "none",
+        panel.border = element_rect(colour = "black"),
         rect = element_rect(fill = "transparent"),
          panel.background = element_rect(fill = "transparent"), # bg of the panel
     plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
@@ -339,5 +341,73 @@ w.regplot <- ggplot(w.reg, aes(x = DATE,
 
 w.regplot + geom_hline(yintercept = 0.7557, color = "red")+
   geom_hline(yintercept = 0.8973, color = "blue")
+```
+
+AGGRESSION REGRESSIONS
+```{r}
+#daily mean predictions
+shed.breaks <- c("GG","ULB","RMO","MUL")
+shed.colors <- c("firebrick4","slateblue4","sienna2","seagreen1")
+
+dmean <- ggplot(prediction, aes(x = pred,
+                       y = head.dmean))+
+  geom_point(aes(color = shed), size = 2)+
+  geom_abline(slope = 1, intercept = 0)+
+  xlim(9, 14)+
+  ylim(9, 14)+
+  theme_classic()+
+  labs(x = "Predicted Head temp", 
+       y = "Observed Head temp")+
+  theme(rect = element_rect(fill = "transparent"),
+         panel.background = element_rect(fill = "transparent"), # bg of the panel
+    plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+    panel.grid.major = element_blank(), # get rid of major grid
+    panel.grid.minor = element_blank(), # get rid of minor grid
+    legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+    legend.box.background = element_rect(fill = "transparent", color = NA),
+    strip.background = element_blank(),
+    text= element_text(size=17))+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors)
+
+ggsave(dmean, filename = "dmeanairTpred.png",  bg = "transparent"
+       ,width = 5, height = 5, units = c("in"))
+```
+
+```{r}
+#hourly mean predictions
+hmean <- ggplot(prediction.hour, aes(x = pred,
+                       y = head.hmean))+
+  geom_point(aes(color = shed), size = 2)+
+    geom_abline(slope = 1, intercept = 0)+
+  theme_invis()+
+  xlim(9, 14)+
+  ylim(9, 14)+
+  labs(x = "Predicted Head temp", 
+       y = "Observed Head temp")+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors)
+
+ggsave(hmean, filename = "hmeanairTpred.png",  bg = "transparent"
+       ,width = 5, height = 5, units = c("in"))
+
+```
+
+```{r}
+#minute mean predictions
+minmean <- ggplot(prediction.min, aes(x = pred,
+                       y = head.temp))+
+  geom_point(aes(color = shed))+
+      geom_abline(slope = 1, intercept = 0)+
+  theme_invis()+
+  xlim(9, 14)+
+  ylim(9, 14)+
+  labs(x = "Predicted Head temp", 
+       y = "Observed Head temp")+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors)
+
+ggsave(minmean, filename = "minmeanTpred.png", bg = "transparent"
+       ,width = 5, height = 5, units = c("in"))
 ```
 
