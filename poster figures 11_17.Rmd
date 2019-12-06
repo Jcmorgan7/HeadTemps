@@ -225,7 +225,6 @@ shed.colors <- c("firebrick4","slateblue4","sienna2","seagreen1")
 down.heads <- ggplot(dogg, aes(x = head.temp,
                                y = Value))+
   #stat_density2d(size = 0.5)+
-  scale_color_brewer(palette = "Dark2")+
   geom_point(aes(color = shed),
              size = 2, alpha = 0.5)+
   #geom_smooth(method = 'lm', se = FALSE, color = "black")+
@@ -235,6 +234,9 @@ down.heads <- ggplot(dogg, aes(x = head.temp,
   labs(x = "Head Temperature (C)",
        y = "Downstream Temperature (C)")
 down.heads
+
+
+
 
 ggsave(down.heads, filename = "headvsdown.png",  bg = "transparent",
        width = 7.5, height = 5, units = c("in"))
@@ -344,6 +346,112 @@ w.regplot + geom_hline(yintercept = 0.7557, color = "red")+
 ```
 
 AGGRESSION REGRESSIONS
+
+
+
+
+
+```{r}
+#subset data I actually need
+atak <- select(dogg, Site, shed, Value, rnd.dates, d.mean, d.min, d.max, UAA..ft2., elev.mean, slope.mean, head.temp, head.dmean, airT, air.d.mean, air.d.min, air.d.max)%>%
+  mutate(date = date(rnd.dates))
+atak$rnd.dates <- ymd_hms(atak$rnd.dates)
+
+#calculate lm for each day at each site
+atak.day <- select(atak, -c(rnd.dates, Value, head.temp, airT))
+atak.day <- unique(atak.day)
+atak.day <- atak.day[complete.cases(atak.day),]
+
+dayz <- select(atak.day, date)
+dayz <- unique(dayz)
+
+for(k in 1:length(dayz$date)){
+  day <- dayz$date[k]
+  df <- filter(atak.day, date == day)
+  reg <- lm(head.dmean ~ air.d.mean + UAA..ft2. + elev.mean + slope.mean,
+            data = df)
+  r2 <- summary(reg)$r.squared
+  co <- coefficients(reg)
+  #output
+  temp <- mutate(df, r2 = r2, co.int = co[1], 
+                              co.air.dmean = co[2],
+                              co.UAA = co[3],
+                              co.elev = co[4],
+                              co.slope = co[5])
+  if(k == 1) alldat <- temp
+  if(k > 1) alldat <- rbind(alldat, temp)
+}
+
+prediction <- mutate(alldat, pred = co.int + air.d.mean * co.air.dmean + co.UAA * UAA..ft2.+
+                     co.elev * elev.mean + co.slope * slope.mean)
+
+
+#creating prediction.hour
+atak.hour <- atak
+atak.hour$hour <- floor_date(atak$rnd.dates, unit = "hour")
+atak.hour <- atak.hour%>%
+  group_by(hour, Site)%>%
+  mutate(head.hmean = mean(head.temp), air.hmean = mean(airT))%>%
+  select(Site, shed, hour, head.hmean, air.hmean, UAA..ft2., elev.mean, slope.mean)
+
+atak.hour <- unique(atak.hour)
+atak.hour <- atak.hour[complete.cases(atak.hour),]
+atak.hour <- as.data.frame(atak.hour)
+
+hourz <- select(atak.hour, hour)
+hourz <- unique(hourz)
+
+for(o in 1:length(hourz$hour)){
+  our <- hourz$hour[o]
+  df <- filter(atak.hour, hour == our)
+  reg <- lm(head.hmean ~ air.hmean + UAA..ft2. + elev.mean + slope.mean,
+            data = df)
+  r2 <- summary(reg)$r.squared
+  co <- coefficients(reg)
+  #output
+  temp <- mutate(df, r2 = r2, co.int = co[1], 
+                              co.air.hmean = co[2],
+                              co.UAA = co[3],
+                              co.elev = co[4],
+                              co.slope = co[5])
+  if(o == 1) alldat <- temp
+  if(o > 1) alldat <- rbind(alldat, temp)
+}
+
+prediction.hour <- mutate(alldat, pred = co.int + air.hmean * co.air.hmean + co.UAA * UAA..ft2.+
+                     co.elev * elev.mean + co.slope * slope.mean)
+
+
+#creating prediction.min
+#calculate lm for each 10 min interval at each site
+atak.min <- unique(atak)
+atak.min <- atak.min[complete.cases(atak.min),]
+
+minz <- select(atak.min, rnd.dates)
+minz <- unique(minz)
+
+for(o in 1:length(minz$rnd.dates)){
+  mint <- minz$rnd.dates[o]
+  df <- filter(atak.min, rnd.dates == mint)
+  reg <- lm(head.temp ~ airT + UAA..ft2. + elev.mean + slope.mean,
+            data = df)
+  r2 <- summary(reg)$r.squared
+  co <- coefficients(reg)
+  #output
+  temp <- mutate(df, r2 = r2, co.int = co[1], 
+                              co.airT = co[2],
+                              co.UAA = co[3],
+                              co.elev = co[4],
+                              co.slope = co[5])
+  if(o == 1) alldat <- temp
+  if(o > 1) alldat <- rbind(alldat, temp)
+}
+
+prediction.min <- mutate(alldat, pred = co.int + airT * co.airT + co.UAA * UAA..ft2.+
+                     co.elev * elev.mean + co.slope * slope.mean)
+```
+
+
 ```{r}
 #daily mean predictions
 shed.breaks <- c("GG","ULB","RMO","MUL")
@@ -394,20 +502,442 @@ ggsave(hmean, filename = "hmeanairTpred.png",  bg = "transparent"
 ```
 
 ```{r}
-#minute mean predictions
-minmean <- ggplot(prediction.min, aes(x = pred,
-                       y = head.temp))+
-  geom_point(aes(color = shed))+
-      geom_abline(slope = 1, intercept = 0)+
+#minute mean prediction timeseries
+prediction.hr.2sheds <- filter(prediction.hour,
+                                shed %in% c("MUL"))%>%
+  select(Site, shed, hour, head.hmean, pred)%>%
+  gather(key= "type", value = "value", -hour, -shed, -Site)
+hrmean <- ggplot(prediction.hr.2sheds, aes(x = hour))+
+  geom_point(aes(y = value, shape = type), color = "slateblue4")+
+  theme(legend.position = "none",
+        panel.border = element_rect(colour = "black"),
+        rect = element_rect(fill = "transparent"),
+         panel.background = element_rect(fill = "transparent"), # bg of the panel
+    plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+    panel.grid.major = element_blank(), # get rid of major grid
+    panel.grid.minor = element_blank(), # get rid of minor grid
+    legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+    legend.box.background = element_rect(fill = "transparent"),
+    strip.background = element_blank(),
+    text= element_text(size=17))+
+  facet_wrap(~Site)+
+  labs(x = "", 
+       y = "Temperature (C)")+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors)+
+  scale_shape_manual(breaks = c("head.hmean","pred"),
+                     values = c(19, 8))
+
+hrmean
+
+ggsave(hrmean, filename = "hrpredtimeseries.png",  bg = "transparent"
+       ,width = 11, height = 5, units = c("in"))
+```
+
+```{r}
+prediction3 <- filter(prediction,
+                                shed %in% c("MUL"))%>%
+  select(Site, shed, date, head.dmean, pred)%>%
+  gather(key= "type", value = "value", -date, -shed, -Site)
+
+pred.breaks4 = c("pred", "head.dmean")
+pred.colors4 = c("seagreen1", "black")
+
+muldmean <- ggplot(prediction3, aes(x = date,
+                       y = value))+
+  geom_point(aes(shape = type, color = type))+
+  theme_classic()+
+  labs(x = "", 
+       y = "Temperature (C)")+
+  theme(legend.position = "none",
+        panel.border = element_rect(colour = "black"),
+        rect = element_rect(fill = "transparent"),
+         panel.background = element_rect(fill = "transparent"), # bg of the panel
+    plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+    panel.grid.major = element_blank(), # get rid of major grid
+    panel.grid.minor = element_blank(), # get rid of minor grid
+    legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+    legend.box.background = element_rect(fill = "transparent"),
+    strip.background = element_blank(),
+    text= element_text(size=17))+
+  facet_wrap(~Site)+
+   scale_color_manual(breaks = pred.breaks4,
+                    values = pred.colors4)+
+  scale_shape_manual(breaks = c("head.dmean","pred"),
+                     values = c(19, 8))
+#+ylim(11.9, 13.8)
+muldmean
+
+ggsave(muldmean, filename = "mulpredd.png",  bg = "transparent"
+       ,width = 11, height = 5, units = c("in"))
+```
+
+
+
+```{r}
+#minute mean prediction timeseries
+prediction.hr3 <- filter(prediction.hour,
+                                shed %in% c("MUL"))%>%
+  select(Site, shed, hour, head.hmean, pred)%>%
+  gather(key= "type", value = "value", -hour, -shed, -Site)
+
+pred.breaks3 = c("pred", "head.hmean")
+pred.colors3 = c("seagreen1", "black")
+
+#prediction.hr.2sheds$type <- ordered(x = c("pred","head.hmean"), levels = c("head.hmean", "pred"))
+
+mulhrmean <- ggplot(prediction.hr3, aes(x = hour))+
+  geom_point(aes(y = value, shape = type, color = type))+
+  theme(legend.position = "none",
+        panel.border = element_rect(colour = "black"),
+        rect = element_rect(fill = "transparent"),
+         panel.background = element_rect(fill = "transparent"), # bg of the panel
+    plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+    panel.grid.major = element_blank(), # get rid of major grid
+    panel.grid.minor = element_blank(), # get rid of minor grid
+    legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+    legend.box.background = element_rect(fill = "transparent"),
+    strip.background = element_blank(),
+    text= element_text(size=17))+
+  facet_wrap(~Site)+
+  labs(x = "", 
+       y = "Temperature (C)")+
+  scale_color_manual(breaks = pred.breaks3,
+                    values = pred.colors3)+
+  scale_shape_manual(breaks = c("head.hmean","pred"),
+                     values = c(19, 8))
+#+ ylim(11.9, 13.8)
+
+mulhrmean
+
+ggsave(mulhrmean, filename = "mulpredtime.png",  bg = "transparent"
+       ,width = 11, height = 5, units = c("in"))
+```
+
+
+```{r}
+#minute mean prediction timeseries
+prediction.hr.2sheds <- filter(prediction.hour,
+                                shed %in% c("GG"))%>%
+  select(Site, shed, hour, head.hmean, pred)%>%
+  gather(key= "type", value = "value", -hour, -shed, -Site)
+
+pred.breaks2 = c("pred", "head.hmean")
+pred.colors2 = c("firebrick4", "black")
+
+#prediction.hr.2sheds$type <- ordered(x = c("pred","head.hmean"), levels = c("head.hmean", "pred"))
+
+gghrmean <- ggplot(prediction.hr.2sheds, aes(x = hour))+
+  geom_point(aes(y = value, shape = type, color = type))+
+  theme(legend.position = "none",
+        panel.border = element_rect(colour = "black"),
+        rect = element_rect(fill = "transparent"),
+         panel.background = element_rect(fill = "transparent"), # bg of the panel
+    plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+    panel.grid.major = element_blank(), # get rid of major grid
+    panel.grid.minor = element_blank(), # get rid of minor grid
+    legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+    legend.box.background = element_rect(fill = "transparent"),
+    strip.background = element_blank(),
+    text= element_text(size=17))+
+  facet_wrap(~Site)+
+  labs(x = "", 
+       y = "Temperature (C)")+
+  scale_color_manual(breaks = pred.breaks2,
+                    values = pred.colors2)+
+  scale_shape_manual(breaks = c("head.hmean","pred"),
+                     values = c(19, 8))+
+  ylim(11.9, 13.8)
+
+gghrmean
+
+ggsave(gghrmean, filename = "hrpredtimeseries.png",  bg = "transparent"
+       ,width = 11, height = 5, units = c("in"))
+```
+```{r}
+library(hydroGOF)
+#NSE
+NSE(prediction.hour$pred, prediction.hour$head.hmean)
+NSE(prediction$pred, prediction$head.dmean)
+```
+
+
+```{r}
+prediction2 <- filter(prediction,
+                                shed %in% c("GG"))%>%
+  select(Site, shed, date, head.dmean, pred)%>%
+  gather(key= "type", value = "value", -date, -shed, -Site)
+
+pred.breaks = c("pred", "head.dmean")
+pred.colors = c("firebrick4", "black")
+
+dmean <- ggplot(prediction2, aes(x = date,
+                       y = value))+
+  geom_point(aes(shape = type, color = type))+
+  theme_classic()+
+  labs(x = "", 
+       y = "Temperature (C)")+
+  theme(legend.position = "none",
+        panel.border = element_rect(colour = "black"),
+        rect = element_rect(fill = "transparent"),
+         panel.background = element_rect(fill = "transparent"), # bg of the panel
+    plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+    panel.grid.major = element_blank(), # get rid of major grid
+    panel.grid.minor = element_blank(), # get rid of minor grid
+    legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+    legend.box.background = element_rect(fill = "transparent"),
+    strip.background = element_blank(),
+    text= element_text(size=17))+
+  facet_wrap(~Site)+
+   scale_color_manual(breaks = pred.breaks,
+                    values = pred.colors)+
+  scale_shape_manual(breaks = c("head.hmean","pred"),
+                     values = c(19, 8))+
+  ylim(11.9, 13.8)
+dmean
+
+ggsave(dmean, filename = "ggpredd.png",  bg = "transparent"
+       ,width = 11, height = 5, units = c("in"))
+```
+
+
+```{r}
+#minute mean prediction timeseries
+
+streams <- data.frame("Streams" =c("Wind","Glac", "Land",
+                                    "ULB2","ULB3","ULB4",
+                                    "RMO1","RMO2","RMO3",
+                                    "MUL2","MUL4","MUL7"),
+                       "Site" = factor(c(1,2,3,
+                                  1,2,3,
+                                  1,2,3,
+                                  1,2,3)))
+prediction.hour$Site <- as.character(prediction.hour$Site)
+prediction.hour2 <- prediction.hour %>% left_join(streams, by = "Site")
+head(prediction)
+
+#trying a different strategy
+pred1 <- prediction%>%
+  select(Site, shed, head.dmean, date, pred)%>%
+  rename(d.pred = pred)
+pred2 <- prediction.hour%>%
+  select(Site, shed, head.hmean, hour, pred)%>%
+  rename(h.pred = pred)%>%
+  mutate(date = date(hour))
+
+pred3 <- left_join(pred1, pred2, by = c("Site", "shed", "date"))
+
+pred4 <- filter(pred3, shed %in% c("MUL", "RMO"))%>%
+  gather(key = "pred.or.obs", value = "degrees", -Site,-shed,-date,-hour)
+#%>%  gather(key = "temp", value = "degrees", -Site,-shed, -scale, -pred, -date, -hour)
+
+test <- data.frame(x = c(1, 1, 1),
+                   y = c(1, 1, 1),
+                   z = c("3", "2", "1"))
+test$z <- ordered(x = c("3","2","1"), levels = c("3", "2", "1"))
+                  #, labels = )
+ggplot(test, aes(x = x, y = y))+
+  geom_point(aes(color = z))+
+  theme_classic()
+
+pred4$pred.or.obs <- factor(x = c("d.pred", "h.pred","head.dmean", "head.hmean"), levels = c("d.pred", "h.pred","head.dmean", "head.hmean"))
+
+pred.breaks = c("d.pred", "h.pred","head.dmean", "head.hmean")
+pred.colors1 = c("sienna2", "seagreen1", "black", "black")
+pred.shapes = c(8, 8, 19, 19)
+
+hrmean <- ggplot(data = pred4)+
+  geom_point(aes(x = hour,
+                 y = degrees, 
+                 color = pred.or.obs,
+                 shape = pred.or.obs))+
+  theme(legend.position = "none",
+        panel.border = element_rect(colour = "black"),
+        rect = element_rect(fill = "transparent"),
+         panel.background = element_rect(fill = "transparent"), # bg of the panel
+    plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+    panel.grid.major = element_blank(), # get rid of major grid
+    panel.grid.minor = element_blank(), # get rid of minor grid
+    legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+    legend.box.background = element_rect(fill = "transparent"),
+    strip.background = element_blank(),
+    text= element_text(size=17))+
+  facet_wrap(~Site, scales = "free")+
+  labs(x = "", 
+       y = "Temperature (C)")+
+  scale_color_manual(breaks = pred.breaks,
+                    values = pred.colors1)+
+  scale_shape_manual(breaks = pred.breaks,
+                     values = pred.shapes)
+
+hrmean
+
+
+
+
+
+
+prediction.hour$Stream <- prediction.hour$Site
+prediction.hour$Stream <- character(prediction$Stream)
+prediction.hour <- mutate(prediction.hour,
+                          Stream = Site)
+                          
+ prediction.hour <- mutate(prediction.hour,                 
+                          Stream =  replace(Stream, Site == "Wind", "1"),
+                          Stream = replace(Stream, Stream == "Glac", "2"),                        
+                          Stream = replace(Stream, Stream == "Land", "3"),
+                          Stream = replace(Stream, Stream == "ULB2", "1"),
+                          Stream = replace(Stream, Stream == "ULB3", "2"),
+                          Stream = replace(Stream, Stream == "ULB4", "3"),
+                          Stream = replace(Stream, Stream == "RMO1", "1"),
+                          Stream = replace(Stream, Stream == "RMO2", "2"),
+                          Stream = replace(Stream, Stream == "RMO3", "3"),
+                          Stream = replace(Stream, Stream == "MUL2", "1"),
+                          Stream = replace(Stream, Stream == "MUL4", "2"),
+                          Stream = replace(Stream, Stream == "MUL7", "3"))
+
+
+
+prediction.hr.2sheds <- filter(prediction.hour,
+                                shed %in% c("MUL"))%>%
+  select(Site, shed, hour, head.hmean, pred)%>%
+  gather(key= "type", value = "value", -hour, -shed, -Site)
+
+
+hrmean <- ggplot(prediction.hr.2sheds, aes(x = hour))+
+  geom_point(aes(y = value, shape = type), color = "slateblue4")+
+  theme(legend.position = "none",
+        panel.border = element_rect(colour = "black"),
+        rect = element_rect(fill = "transparent"),
+         panel.background = element_rect(fill = "transparent"), # bg of the panel
+    plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+    panel.grid.major = element_blank(), # get rid of major grid
+    panel.grid.minor = element_blank(), # get rid of minor grid
+    legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+    legend.box.background = element_rect(fill = "transparent"),
+    strip.background = element_blank(),
+    text= element_text(size=17))+
+  facet_wrap(~Site, scales = "free")+
+  labs(x = "", 
+       y = "Temperature (C)")+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors)+
+  scale_shape_manual(breaks = c("head.hmean","pred"),
+                     values = c(19, 8))
+
+hrmean
+
+ggsave(hrmean, filename = "hrpredtimeseries.png",  bg = "transparent"
+       ,width = 11, height = 15, units = c("in"))
+```
+
+
+```{r}
+#minute mean prediction timeseries
+prediction.min.2sheds <- filter(prediction.min,
+                                shed %in% c("GG", "MUL"))
+minmean <- ggplot(prediction.min.2sheds, aes(x = rnd.dates))+
+  geom_line(aes(y = pred, color = shed))+
+  geom_line(aes(y = head.temp, color = shed, linetype = "dashed"),linetype = "dashed")+
   theme_invis()+
-  xlim(9, 14)+
-  ylim(9, 14)+
-  labs(x = "Predicted Head temp", 
-       y = "Observed Head temp")+
+  labs(x = "", 
+       y = "Temperature (C)")+
   scale_color_manual(breaks = shed.breaks,
                     values = shed.colors)
+
+minmean
 
 ggsave(minmean, filename = "minmeanTpred.png", bg = "transparent"
        ,width = 5, height = 5, units = c("in"))
 ```
+
+Panel of Topo maps
+```{r}
+#read in data set
+dogg <- read.csv("Tempsanddata_11_8.csv")
+warm <- read.csv("straightlinerates11_8.csv")
+
+warm <- select(warm, Site, shed, rnd.dates, straight.line.Dist.to.head.m, diff, rate)
+
+dogg <- left_join(dogg, warm, by = c("Site", "shed", "rnd.dates"))
+
+#adding averages
+chunk <- dogg%>%
+  group_by(Site, type)%>%
+  summarise(avg.headtemp = mean(head.temp, na.rm = TRUE), 
+            avg.Value = mean(Value))
+
+doge <- inner_join(dogg, unique(chunk), by = c("Site", "type"))%>%
+  distinct()
+
+#converting topo metrics to metrics
+doge <- mutate(doge, elev.mean.meters = elev.mean * 0.3048,
+               elev.meters = Elevation..ft. *0.3048,
+               uaa.m2 = UAA..ft2. * 0.3048 * 0.3048)
+```
+
+```{r}
+#plotting slope vs avg water T
+elev <- ggplot(doge, aes(x = elev.mean,
+                          y = avg.headtemp,
+                          color = shed))+
+  geom_point(size = 4)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  theme_invis()+
+  labs(x = "Mean Elevation (m)",
+       y = "Average WaterT (C)")+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors)
+elev
+#slope
+slope <- ggplot(doge, aes(x = slope.mean,
+                          y = avg.headtemp,
+                          color = shed))+
+  geom_point(size = 4)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  theme_invis()+
+  labs(x = "Mean Slope (%)",
+       y = "Average WaterT (C)")+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors)
+slope
+#drainage area
+drain <- ggplot(doge, aes(x = uaa.m2,
+                          y = avg.headtemp,
+                          color = shed))+
+  geom_point(size = 4)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  theme_invis()+
+  labs(x = "Drainage Area (m2)",
+       y = "Average WaterT (C)")+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors)
+drain
+
+heady <- ggplot(dogg, aes(x = airT,
+                          y = head.temp,
+                          color = shed))+
+  geom_point(size = 1,
+             alpha = 0.25)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_invis()+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors)+
+  labs(x = "Average airT (C)",
+       y = "Average WaterT (C)")
+
+
+ggsave(drain, filename = "topoplot1.png", bg = "transparent"
+       ,width = 5, height = 4, units = c("in"))
+ggsave(slope, filename = "topoplot2.png", bg = "transparent"
+       ,width = 5, height = 4, units = c("in"))
+ggsave(elev, filename = "topoplot3.png", bg = "transparent"
+       ,width = 5, height = 4, units = c("in"))
+ggsave(heady, filename = "headvairt.png", bg = "transparent"
+       ,width = 5, height = 4, units = c("in"))
+```
+
 
