@@ -189,9 +189,10 @@ colors <- c("firebrick4", "firebrick3", "firebrick2",
             "sienna4", "sienna3", "sienna2",
             "seagreen", "seagreen3", "seagreen1")
 
+rogg$rnd.dates <- ymd_hms(rogg$rnd.dates)
 timepanel <- ggplot(rogg, aes(color = Site))+
   geom_line(aes(x = rnd.dates,
-               y = Value))+
+               y = Value),linetype = 2)+
   geom_line(aes(x = rnd.dates,
                 y = head.temp))+
   theme_classic()+
@@ -213,7 +214,7 @@ timepanel <- ggplot(rogg, aes(color = Site))+
 timepanel
 
 ggsave(timepanel, filename = "timepanel.png",  bg = "transparent",
-       width = 24, height = 5, units = c("in"))
+       width = 25, height = 5.5, units = c("in"))
 ```
 
 Head temp vs Down Temps
@@ -541,11 +542,11 @@ prediction3 <- filter(prediction,
   gather(key= "type", value = "value", -date, -shed, -Site)
 
 pred.breaks4 = c("pred", "head.dmean")
-pred.colors4 = c("seagreen1", "black")
+pred.colors4 = c("seagreen", "black")
 
 muldmean <- ggplot(prediction3, aes(x = date,
                        y = value))+
-  geom_point(aes(shape = type, color = type))+
+  geom_line(aes(linetype = type, color = type))+
   theme_classic()+
   labs(x = "", 
        y = "Temperature (C)")+
@@ -582,12 +583,12 @@ prediction.hr3 <- filter(prediction.hour,
   gather(key= "type", value = "value", -hour, -shed, -Site)
 
 pred.breaks3 = c("pred", "head.hmean")
-pred.colors3 = c("seagreen1", "black")
+pred.colors3 = c("seagreen", "black")
 
 #prediction.hr.2sheds$type <- ordered(x = c("pred","head.hmean"), levels = c("head.hmean", "pred"))
 
 mulhrmean <- ggplot(prediction.hr3, aes(x = hour))+
-  geom_point(aes(y = value, shape = type, color = type))+
+  geom_line(aes(y = value, linetype = type, color = type))+
   theme(legend.position = "none",
         panel.border = element_rect(colour = "black"),
         rect = element_rect(fill = "transparent"),
@@ -628,7 +629,7 @@ pred.colors2 = c("firebrick4", "black")
 #prediction.hr.2sheds$type <- ordered(x = c("pred","head.hmean"), levels = c("head.hmean", "pred"))
 
 gghrmean <- ggplot(prediction.hr.2sheds, aes(x = hour))+
-  geom_point(aes(y = value, shape = type, color = type))+
+  geom_line(aes(y = value, linetype = type, color = type))+
   theme(legend.position = "none",
         panel.border = element_rect(colour = "black"),
         rect = element_rect(fill = "transparent"),
@@ -657,6 +658,9 @@ ggsave(gghrmean, filename = "hrpredtimeseries.png",  bg = "transparent"
 ```{r}
 library(hydroGOF)
 #NSE
+nsemul2.hr <- filter(prediction, Site == "ULB4")
+NSE(nsemul2.hr$pred, nsemul2.hr$head.dmean)
+  
 NSE(prediction.hour$pred, prediction.hour$head.hmean)
 NSE(prediction$pred, prediction$head.dmean)
 ```
@@ -673,7 +677,7 @@ pred.colors = c("firebrick4", "black")
 
 dmean <- ggplot(prediction2, aes(x = date,
                        y = value))+
-  geom_point(aes(shape = type, color = type))+
+  geom_line(aes(linetype = type, color = type))+
   theme_classic()+
   labs(x = "", 
        y = "Temperature (C)")+
