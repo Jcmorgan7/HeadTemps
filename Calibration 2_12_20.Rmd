@@ -1,0 +1,481 @@
+---
+title: "ReCalibration 2_10"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+#global settings
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+#Packages
+library(tidyverse)
+library(lubridate)
+library(SAVER)
+```
+
+2/11
+Performed more robust calibration method, now need to produce calibration curves and apply to the correct sensors
+
+workflow:
+-download and read in data using old code
+-devise a way to incorporate actual temps into df
+-use obs vs act for each sensor to run a linear regression
+-save linear regression for each sensor
+-apply linear regressions to the corresponding sensor data from summer deployment
+
+```{r}
+#read in data
+#removed 15- ULB4HB- super messed up, sensor was broken
+files <- list.files(path = "Calibration data 2_6_20/")
+sites <- read.csv("site_temps_7_11.csv", header = T, sep = ",")
+    sites$f.col.time <- mdy_hm(sites$collection.time)
+    sites$f.dep.time <- mdy_hm(sites$deploy.time)
+#read in all temps into one dataframe
+for (i in 1:length(files)) {
+    data <- read.csv(paste0("Calibration data 2_6_20/",
+                            files[i]), 
+                     skip = 19, 
+                     header = T, sep = ",")
+    #formatting time
+    data$fdates <- mdy_hms(data$Date.Time)
+    #making a column with sensor number
+    data$sensor <- files[i]
+    data$sensor <- gsub("data","\\1", data$sensor)
+    data$sensor <- gsub(".csv","\\1", data$sensor)
+    #making column with site loc
+    #round temperatures to nearest tenth
+    data$rnd.dates <- round_date(data$fdates, "5 minutes")
+  
+  if(i == 1)alldat <- data                 
+  if(i > 1)alldat <- rbind(alldat, data)
+}
+#remove all temps that are not from 2-6-20
+    #make column with day component
+alldat$day <- day(alldat$rnd.dates)
+#remove everything that wasn't on the 6th
+obs <- filter(alldat, day == c("6"))
+#remove values that aren't at the same time as actual measurements
+act <- read.csv("measured temps 2_6.csv")
+    #round times to the nearest 5 mins
+act$time <- mdy_hm(act$time)
+act$r.time <- round_date(act$time, unit = "5 minutes")
+    #filter out values that are not within the calibration period
+obs <- filter(obs, rnd.dates %in% act$r.time)
+#add act measurements to obs
+act1 <- select(act, digital, analog, r.time)
+obs1 <- select(obs, Value, sensor, rnd.dates)%>%
+  rename(r.time = rnd.dates)
+
+comb <- left_join(obs1, act1, by = "r.time")
+
+#run linear regressions
+  #make for loop that runs linear regs for each sensor and produces a data frame with coefficients
+#list of sensors
+sensors <- unique(comb$sensor)
+for(k in 1:length(sensors)){
+  sensor <- sensors[k]
+  df <- filter(comb, sensor == sensors[k])
+  reg <- lm(Value ~ digital,
+            data = df)
+  r2 <- summary(reg)$r.squared
+  co <- coefficients(reg)
+  #output
+  
+  temp <- data.frame(sensor = sensor, r2 = r2, intercept = co[1], slope = co[2])
+  if(k == 1) all <- temp
+  if(k > 1) all <- rbind(all, temp)
+}
+row.names(all) <- 1:nrow(all)
+calibrations <- all
+
+#write.csv(calibrations, file = "calibrations.2_12_20.csv")
+```
+
+Successfully calculated curves to correct data, now need to apply corrections
+```{r}
+#read in og data
+cali <- read.csv("calibrations.2_12_20.csv")
+fog <- read.csv("Formatted.temps.tall_7_17.csv")
+
+#remove sensor 38
+#cali <- filter(cali, sensor != "138")
+#seeing which sensors I am missing
+deployed <- unique(fog$sensor)
+calibrated <- unique(cali$sensor)
+diff <- setdiff(deployed, calibrated)
+
+deployed <- as.integer(unique(fog$sensor))
+calibrated <- as.integer(unique(cali$sensor))
+diff <- setdiff(deployed, calibrated)
+#remove sensors I wasn't able to calibrate
+fog1 <- filter(fog, sensor %in% calibrated)
+#add coeffs to data
+cali.fog <- inner_join(fog, cali, by = "sensor")
+#create column of corrected values
+cali.fog$temp.cor <- ((cali.fog$Value * cali.fog$slope) + cali.fog$intercept)
+
+cali.fog.dayz <- select(cali.fog, temp.cor, rnd.dates, site, type, shed)
+cali.fog.dayz$rnd.dates <- ymd_hms(cali.fog.dayz$rnd.dates)
+```
+
+Basic time series
+```{r}
+#formatting time to beginning and end of deployment period
+#start <- mdy_hm("6-25-19 12:10")
+#end <- mdy_hm("7-5-19 12:10")
+#timeseries <- filter(cali.fog.dayz, rnd.dates >= start)
+#timeseries <- filter(cali.fog.dayz, rnd.dates <=
+
+ULB <- filter(cali.fog.dayz, shed == "ULB")
+ulb.sites <- unique(ULB$site)
+GG <- filter(cali.fog.dayz, shed == "GG")
+gg.sites <- unique(GG$site)
+RMO <- filter(cali.fog.dayz, shed == "RMO")
+rmo.sites <- unique(RMO$site)
+MUL <- filter(cali.fog.dayz, shed == "MUL")
+mul.sites <- unique(MUL$site)
+
+
+gg.char <- as.character(gg.sites)
+ulb.char <- as.character(ulb.sites)
+rmo.char <- as.character(rmo.sites)
+mul.char <- as.character(mul.sites)
+all.ts <- c(gg.char, ulb.char, rmo.char, mul.char)
+double <- c("W600B", "LS180B", "W400B", "GC100B", "LS0B", "MUL2HB", "RMO1HB", "RMO2CA", "RMO2HB", "ULB3CB" )
+
+one.each <- setdiff(all.ts, double)
+#for initial assessment  
+
+timeseries <- cali.fog.dayz %>% filter(site %in% one.each)
+timeseries$site <- gsub('.{1}$', '', timeseries$site)
+timeseries$site <- gsub('.{1}$', '', timeseries$site)
+
+feed <- timeseries %>% mutate_each(list(as.character), site, type, shed)
+feedy <- feed %>%
+  mutate(type = replace(type, type == "channel", "Downstream"),
+         type = replace(type, type == "head", "Head"),
+         site = replace(site, site == "W60", "Wind"),
+         site = replace(site, site == "W40", "Wind"),
+         site = replace(site, site == "GC10", "Glac"),
+         site = replace(site, site == "GC30", "Glac"),
+         site = replace(site, site == "LS", "Land"),
+         site = replace(site, site == "LS18", "Land"))
+
+#Before I can plot airT stuff I need to get some kind of AirT data into my df
+#comine datasets by time and shed
+temps.air <- filter(feedy, type == "air") %>% 
+  select(shed, temp.cor, rnd.dates) %>% 
+  rename(airT = temp.cor)
+
+doob <- filter(feedy, type != "air")
+
+#brush is the new master datasheet
+brush <- left_join(doob, temps.air, by = c("shed", "rnd.dates"))
+#read in topo metrics attached to old data
+dogg <- read.csv("Tempsanddata_11_8.csv")
+dg <- select(dogg, Site, type, UAA..ft2., slope.mean, elev.mean)%>%
+  rename(site = Site)
+yg <- unique(dg)
+row.names(yg) <- 1:nrow(yg)
+#removing the duplicate mul2
+ug <- slice(yg, -7)%>%
+  select(-type)%>%
+  mutate_each(list(as.character), site)
+
+#brush includes downstream temps
+rug <- filter(brush, type == "Downstream")%>%
+  select(temp.cor, rnd.dates, site)%>%
+  rename(downT = temp.cor)
+hug <- filter(brush, type == "Head")
+
+#testing trying to figure out what is happening
+test <- filter(rug, rnd.dates == "2019-06-15 10:10:00")
+#need to join topo from ug, downstream temps from rug, everything from hug
+hugrug <- left_join(hug, rug, by = c("site", "rnd.dates"))
+hugrugug <- left_join(hugrug, ug, by = c("site"))
+
+#write.csv(hugrugug, file = "cor_data_and_topo_2_19.csv")
+
+ulb.ts <- brush %>% filter(shed == "ULB")
+mul.ts <- brush %>% filter(shed == "MUL")
+rmo.ts <- brush %>% filter(shed == "RMO")
+gg.ts <- brush %>% filter(shed == "GG")
+#ulb
+rmo.ts.plot <- ggplot(data = rmo.ts)+
+  geom_line(aes(x = rnd.dates,
+                y = temp.cor,
+                
+                color = site,
+                linetype = type), 
+            size = 1)+
+  scale_linetype_manual(labels = c( "Downstream","Head"),
+                        values=c("solid", "dotted"),
+                        name = "Location")+
+   scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  xlab(" ")+
+  ylab("Temperature (C)")+
+  ylim(9, 19)+
+  theme_classic()+
+  theme(text= element_text(size=17),
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))
+rmo.ts.plot
+#rmo
+ulb.ts.plot <- ggplot(data = ulb.ts)+
+  geom_line(aes(x = rnd.dates,
+                y = temp.cor,
+                color = site,
+                linetype = type), 
+            size = 1.5)+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  scale_linetype_manual(values=c("solid", "dotted"),
+                        name = "Location",
+                        labels = c("Downstream", "Head"))+
+  xlab( " ")+
+  ylab("Temperature (C)")+
+  ylim(9, 19)+
+  theme_classic()+
+  theme(text= element_text(size=17),
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))+
+  guides(color = guide_legend(order = 1), 
+              linetype = guide_legend(order = 2))
+ulb.ts.plot 
+#mul
+mul.ts.plot <- ggplot(data = mul.ts)+
+  geom_line(aes(x = rnd.dates,
+                y = temp.cor,
+                color = site,
+                linetype = type), 
+            size = 1.5)+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  scale_linetype_manual(values=c( "dotted","solid"),
+                        name = "Location",
+                        labels = c("Head", "Downstream"))+
+  xlab( " ")+
+  ylab("Temperature (C)")+
+  ylim(9, 19)+
+  theme_classic()+
+  theme(text= element_text(size=17),
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))
+mul.ts.plot
+#gg
+gg.names <- data.frame("names" =c("Wind","Glacier", "Glacier","Landslide","Wind","Landslide"), 
+                       "site" = c("W40","GC10","GC30","LS18","W60","LS"))
+gg.ts <- gg.ts %>% inner_join(gg.names, by = "site")
+
+gg.ts.plot <- ggplot(data = gg.ts, aes(x = rnd.dates,
+                y = temp.cor,
+                color = site))+
+  geom_line(aes(linetype = type), size = 1.5)+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  scale_linetype_manual(values=c("solid", "dotted"),
+                        name = "Location",
+                        labels = c("Downstream", "Head"))+
+  xlab( " ")+
+  ylab("Temperature (C)")+
+  ylim(9, 19)+
+  theme_classic()+
+  theme(text= element_text(size=17),
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))
+gg.ts.plot
+
+
+
+
+#ggsave("ulb.ts.png", plot = ulb.ts.plot, width = 8, height = 5, units = c("in"))
+#ggsave("mul.ts.png", plot = mul.ts.plot, width = 8, height = 5, units = c("in"))
+#ggsave("rmo.ts.png", plot = rmo.ts.plot, width = 8, height = 5, units = c("in"))
+#ggsave("gg.ts.png", plot = gg.ts.plot, width = 8, height = 5, units = c("in"))
+
+```
+
+```{r}
+#making plots for story board
+#use "cor_data_and_topo_2_19.csv"
+pot <- read.csv("cor_data_and_topo_2_19.csv")
+pot$rnd.dates <- ymd_hms(pot$rnd.dates)
+
+#adding averages
+pote <- pot%>%
+  group_by(site)%>%
+  summarise(avg.headtemp = mean(temp.cor, na.rm = TRUE), 
+            avg.airtemp = mean(airT))
+
+potet <- inner_join(pot, unique(pote), by = c("site"))%>%
+  distinct()
+
+#converting topo metrics to metrics
+potet <- mutate(potet, elev.mean.meters = elev.mean * 0.3048,
+               uaa.m2 = UAA..ft2. * 0.3048 * 0.3048)
+
+
+#plot drainage area vs all temps
+#outlier is probably ls- from spikes in temps that correspond with precip- remove them?
+gronk1 <- ggplot(potet, aes(y = avg.headtemp,
+                             x = uaa.m2,
+                             color = shed))+
+  geom_point(aes(),
+                 size = 4)+
+  theme_classic()+
+  scale_color_brewer(palette = "Dark2")+
+
+  xlab("drainage area (m2)")
+gronk1
+
+gronk1a <- ggplot(potet, aes(y = avg.airtemp,
+                             x = uaa.m2,
+                             color = shed))+
+  geom_point(aes(),
+                 size = 4)+
+  theme_classic()+
+  scale_color_brewer(palette = "Dark2")+
+
+  xlab("drainage area (m2)")
+gronk1a
+
+
+#plot mean slope vs temps
+gronk2 <- ggplot(potet, aes(y = avg.headtemp,
+                             x = slope.mean,
+                             color = shed))+
+  geom_point(aes(),
+                 size = 4)+
+  theme_classic()+
+  scale_color_brewer(palette = "Dark2")+
+
+  xlab("slope (deg)")
+gronk2
+
+#plot mean elev vs temps
+gronk3 <- ggplot(potet, aes(y = avg.headtemp,
+                             x = elev.mean.meters,
+                             color = shed))+
+  geom_point(aes(),
+                 size = 4)+
+  theme_classic()+
+  scale_color_brewer(palette = "Dark2")+
+
+  xlab("mean elev (m)")
+gronk3
+```
+
+```{r}
+theme_invis <- function (){
+        theme(text= element_text(size=17),
+        panel.background  = element_blank(),
+        plot.background = element_rect(fill="transparent", colour=NA),
+        legend.background = element_rect(fill="transparent", colour=NA),
+        legend.key = element_rect(fill="transparent", colour=NA),
+        panel.border = element_blank(), panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank(), axis.line = element_line(colour = "black", 
+                size = rel(1)))
+}
+
+shed.breaks <- c("GG","ULB","RMO","MUL")
+shed.colors <- c("firebrick4","slateblue4","sienna2","seagreen1")
+
+#plotting slope vs avg water T
+elev <- ggplot(potet, aes(x = elev.mean.meters,
+                          y = avg.headtemp,
+                          color = shed))+
+  geom_point(size = 4)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  theme_invis()+
+  labs(x = "Mean Elevation (m)",
+       y = "Average WaterT (C)")+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors)
+elev
+#slope
+slope <- ggplot(potet, aes(x = slope.mean,
+                          y = avg.headtemp,
+                          color = shed))+
+  geom_point(size = 4)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  theme_invis()+
+  labs(x = "Mean Slope (%)",
+       y = "Average WaterT (C)")+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors)
+slope
+#drainage area
+drain <- ggplot(potet, aes(x = uaa.m2,
+                          y = avg.headtemp,
+                          color = shed))+
+  geom_point(size = 4)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  theme_invis()+
+  labs(x = "Drainage Area (m2)",
+       y = "Average WaterT (C)")+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors)
+drain
+
+ggsave(drain, filename = "Ctopoplot1.png", bg = "transparent"
+       ,width = 5, height = 4, units = c("in"))
+ggsave(slope, filename = "Ctopoplot2.png", bg = "transparent"
+       ,width = 5, height = 4, units = c("in"))
+ggsave(elev, filename = "Ctopoplot3.png", bg = "transparent"
+       ,width = 5, height = 4, units = c("in"))
+```
+
+```{r}
+#make table of regression results for storyboard
+all <- lm(avg.headtemp ~ uaa.m2 + elev.mean.meters + slope.mean, data = potet)
+summary(all)
+
+t <- lm(avg.headtemp ~ slope.mean, data = potet)
+summary(t)
+
+```
+```{r}
+#rate plots for storyboard
+warm <- read.csv("straightlinerates11_8.csv")
+
+rat <- select(warm, Site, straight.line.Dist.to.head.m)%>%
+  rename(site = Site)%>%
+  mutate_each(list(as.character), site)
+
+
+rate <- left_join(potet, rat, by = "site")
+
+ratet <- 
+```
+
+
+
+
+
+```{r}
+#Before I can plot airT stuff I need to get some kind of AirT data into my df
+#comine datasets by time and shed
+temps.air <- filter(temps, type == "air")
+
+temps.air <- temps.air %>% mutate_each(list(as.character), site, type, shed)
+temps.air <- temps.air %>% 
+  select(shed, Value, rnd.dates, d.mean, d.min, d.max, d.sd) %>% 
+  rename(airT = Value, air.d.mean = d.mean, air.d.min = d.min, air.d.max = d.max, air.d.sd = d.sd)
+
+#brush is the new master datasheet
+brush <- left_join(comb, temps.air, by = c("shed", "rnd.dates"))
+
+#making summary df
+presump <- brush %>% select(-X, -sensor, -shed, -day, -numb, -A.B, -rnd.dates)
+shed.presump <- brush %>% select(site, shed) %>% distinct()
+
+sump <- presump %>% group_by(site, type) %>% summarise_each(list(mean))
+
+sump <- left_join(sump, shed.presump, by = c("site"))
+```
