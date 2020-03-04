@@ -8,7 +8,7 @@ output: html_document
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
 ```
 
-```{r}
+```{r, include = FALSE}
 #Packages
 library(tidyverse)
 library(lubridate)
@@ -268,7 +268,7 @@ mul.ts.plot
 #gg
 gg.names <- data.frame("names" =c("Wind","Glacier", "Glacier","Landslide","Wind","Landslide"), 
                        "site" = c("W40","GC10","GC30","LS18","W60","LS"))
-gg.ts <- gg.ts %>% inner_join(gg.names, by = "site")
+gg.ts <- gg.ts %>% inner_join(gg.names, brush, by = "site")
 
 gg.ts.plot <- ggplot(data = gg.ts, aes(x = rnd.dates,
                 y = temp.cor,
@@ -308,7 +308,9 @@ pot$rnd.dates <- ymd_hms(pot$rnd.dates)
 pote <- pot%>%
   group_by(site)%>%
   summarise(avg.headtemp = mean(temp.cor, na.rm = TRUE), 
-            avg.airtemp = mean(airT))
+            avg.airtemp = mean(airT),
+            med.headtemp = median(temp.cor, na.rm = TRUE),
+            med.airtemp = median(airT))
 
 potet <- inner_join(pot, unique(pote), by = c("site"))%>%
   distinct()
@@ -317,10 +319,12 @@ potet <- inner_join(pot, unique(pote), by = c("site"))%>%
 potet <- mutate(potet, elev.mean.meters = elev.mean * 0.3048,
                uaa.m2 = UAA..ft2. * 0.3048 * 0.3048)
 
+format.potet <- select(potet, temp.cor, rnd.dates, site, type, shed, airT, downT, slope.mean, elev.mean.meters, uaa.m2, avg.headtemp, avg.airtemp, med.headtemp, med.airtemp)
 
+#write.csv(format.potet, file = "data.for.analysis_3_4.csv")
 #plot drainage area vs all temps
 #outlier is probably ls- from spikes in temps that correspond with precip- remove them?
-gronk1 <- ggplot(potet, aes(y = avg.headtemp,
+gronk1 <- ggplot(potet, aes(y = med.headtemp,
                              x = uaa.m2,
                              color = shed))+
   geom_point(aes(),
@@ -331,7 +335,7 @@ gronk1 <- ggplot(potet, aes(y = avg.headtemp,
   xlab("drainage area (m2)")
 gronk1
 
-gronk1a <- ggplot(potet, aes(y = avg.airtemp,
+gronk1a <- ggplot(potet, aes(y = med.airtemp,
                              x = uaa.m2,
                              color = shed))+
   geom_point(aes(),
@@ -344,7 +348,7 @@ gronk1a
 
 
 #plot mean slope vs temps
-gronk2 <- ggplot(potet, aes(y = avg.headtemp,
+gronk2 <- ggplot(potet, aes(y = med.headtemp,
                              x = slope.mean,
                              color = shed))+
   geom_point(aes(),
@@ -356,7 +360,7 @@ gronk2 <- ggplot(potet, aes(y = avg.headtemp,
 gronk2
 
 #plot mean elev vs temps
-gronk3 <- ggplot(potet, aes(y = avg.headtemp,
+gronk3 <- ggplot(potet, aes(y = med.headtemp,
                              x = elev.mean.meters,
                              color = shed))+
   geom_point(aes(),
@@ -366,6 +370,13 @@ gronk3 <- ggplot(potet, aes(y = avg.headtemp,
 
   xlab("mean elev (m)")
 gronk3
+
+#how different are the median values from the mean values?
+ggplot(potet, aes(x = avg.headtemp,
+                  y = med.headtemp))+
+  geom_point(aes(color = site), size = 2)+
+  geom_abline(slope = 1, intercept = 0, color = "black")+
+  theme_classic()
 ```
 
 ```{r}
@@ -385,40 +396,40 @@ shed.colors <- c("firebrick4","slateblue4","sienna2","seagreen1")
 
 #plotting slope vs avg water T
 elev <- ggplot(potet, aes(x = elev.mean.meters,
-                          y = avg.headtemp,
+                          y = med.headtemp,
                           color = shed))+
   geom_point(size = 4)+
   #geom_smooth(method = 'lm', se = FALSE)+
   theme_classic()+
   theme_invis()+
   labs(x = "Mean Elevation (m)",
-       y = "Average WaterT (C)")+
+       y = "Median WaterT (C)")+
   scale_color_manual(breaks = shed.breaks,
                     values = shed.colors)
 elev
 #slope
 slope <- ggplot(potet, aes(x = slope.mean,
-                          y = avg.headtemp,
+                          y = med.headtemp,
                           color = shed))+
   geom_point(size = 4)+
   #geom_smooth(method = 'lm', se = FALSE)+
   theme_classic()+
   theme_invis()+
   labs(x = "Mean Slope (%)",
-       y = "Average WaterT (C)")+
+       y = "Median WaterT (C)")+
   scale_color_manual(breaks = shed.breaks,
                     values = shed.colors)
 slope
 #drainage area
 drain <- ggplot(potet, aes(x = uaa.m2,
-                          y = avg.headtemp,
+                          y = med.headtemp,
                           color = shed))+
   geom_point(size = 4)+
   #geom_smooth(method = 'lm', se = FALSE)+
   theme_classic()+
   theme_invis()+
   labs(x = "Drainage Area (m2)",
-       y = "Average WaterT (C)")+
+       y = "Median WaterT (C)")+
   scale_color_manual(breaks = shed.breaks,
                     values = shed.colors)
 drain
@@ -454,28 +465,52 @@ rate <- left_join(potet, rat, by = "site")
 ratet <- 
 ```
 
-
-
-
-
+3/4/20
+Figure out if the temperatures at Glacier are real
+Compare to old data
 ```{r}
-#Before I can plot airT stuff I need to get some kind of AirT data into my df
-#comine datasets by time and shed
-temps.air <- filter(temps, type == "air")
+#use "data.for.analysis_3_4.csv"
+potet <- read.csv("data.for.analysis_3_4.csv")
 
-temps.air <- temps.air %>% mutate_each(list(as.character), site, type, shed)
-temps.air <- temps.air %>% 
-  select(shed, Value, rnd.dates, d.mean, d.min, d.max, d.sd) %>% 
-  rename(airT = Value, air.d.mean = d.mean, air.d.min = d.min, air.d.max = d.max, air.d.sd = d.sd)
+#read in old data
+fall <- read.csv("GG Temperature Data Sheets/Falltempfinal.csv")
+spring <- read.csv("GG Temperature Data Sheets/Springtempfinal.csv")
 
-#brush is the new master datasheet
-brush <- left_join(comb, temps.air, by = c("shed", "rnd.dates"))
+means <- c(mean(fall$GC0AF), mean(fall$GC0BF), mean(spring$GC0AS), mean(spring$GC0BS))
+#find what airT is at the median
+#df[which(df$Amount == min(df$Amount)), ]
+airtFA <- mean(fall$AirTF[which(fall$GC0AF == median(fall$GC0AF))])
+airtFB <- mean(fall$AirTF[which(fall$GC0BF == median(fall$GC0BF))])
+airtSA <- mean(spring$AirTS[which(spring$GC0AS == median(spring$GC0AS))])
+airtSB <- mean(spring$AirTS[which(spring$GC0BS == median(spring$GC0BS))])
 
-#making summary df
-presump <- brush %>% select(-X, -sensor, -shed, -day, -numb, -A.B, -rnd.dates)
-shed.presump <- brush %>% select(site, shed) %>% distinct()
+airT <- c(airtFA, airtFB, airtSA, airtSB)
+ID <- c("FA", "FB", "SA", "SB")
+#df of mean water T at GC head, mean airT when the median temp occurs, and the time ID
+GC.means <- data.frame(means, airT, ID)
 
-sump <- presump %>% group_by(site, type) %>% summarise_each(list(mean))
+#add summer deployment to data
+GC.summer <- filter(potet, site == "Glac")
+airtsum <- mean(GC.summer$airT[which(GC.summer$temp.cor == GC.summer$med.headtemp)])
 
-sump <- left_join(sump, shed.presump, by = c("site"))
+#do it again but with summer deployment added
+means <- c(mean(fall$GC0AF), mean(fall$GC0BF), mean(spring$GC0AS), 
+           mean(spring$GC0BS), GC.summer$avg.headtemp[1])
+airT <- c(airtFA, airtFB, airtSA, airtSB, airtsum)
+ID <- c("FallA", "FallB", "SpringA", "SpringB","Summer")
+GC.means <- data.frame(means, airT, ID)
+
+#plot them all
+gc.fall2017 <- select(fall, temptime, AirTF, GC0AF)%>%
+  rename(datetime = temptime, airT = AirTF, headT = GC0AF)%>%
+  mutate(deployment = "Fall 2017")
+gc.spring2017 <- select(spring, temptime, AirTS, GC0AS)%>%
+  rename(datetime = temptime, airT = AirTS, headT = GC0AS)%>%
+  mutate(deployment = "Spring 2017")
+gc.summer2019 <- select(GC.summer, rnd.dates, airT, temp.cor)%>%
+  rename(datetime = rnd.dates, headT = temp.cor)%>%
+  mutate(deployment = "Summer 2019")
+
+
 ```
+
