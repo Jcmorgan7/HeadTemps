@@ -792,7 +792,7 @@ test + geom_hline(yintercept = 0.7557, color = "red")+
   REading in new ICP data from Christa!!!
 
 ```{r}
-elm <- read.csv("ICP results.csv")
+elm1 <- read.csv("ICP results.csv")
 
 elm <- filter(elm, type == "samp")%>%
   select(-No., -Name)%>%
@@ -802,8 +802,7 @@ elm <- filter(elm, type == "samp")%>%
     mutate_each(list(as.character), site, type, shed)
 elm$date <- mdy(elm$date)
 
-ggplot(elm, aes(x = element,
-                y = site))+
+ggplot(elm, aes(x = element, y = site))+
   geom_tile(aes(fill = measurement))+
    scale_x_discrete(expand = c(0, 0)) +
   scale_y_discrete(expand = c(0, 0)) +
@@ -814,7 +813,8 @@ ggplot(elm, aes(x = element,
         axis.text.y = element_text(size=12, 
                                    angle=90, hjust=0, colour="black"))+
   #scale_fill_gradient(low = "red",high = "steelblue")
-  theme_classic()
+  theme_classic()+
+  facet_wrap(~element)
 
 fd=data.frame(x = rep(c("x","y","z"),3), 
               y=c("a","b","c","b","c","a","c","a","b"),

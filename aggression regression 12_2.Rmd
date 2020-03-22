@@ -9,6 +9,7 @@ AGGRESSION REGRESSION- run regressions predicting the daily mean of head temp, r
 atak <- select(dogg, Site, shed, Value, rnd.dates, d.mean, d.min, d.max, UAA..ft2., elev.mean, slope.mean, head.temp, head.dmean, airT, air.d.mean, air.d.min, air.d.max)%>%
   mutate(date = date(rnd.dates))
 atak$rnd.dates <- ymd_hms(atak$rnd.dates)
+#write.csv(atak, file = "atak.csv")
 
 #lm calculating one avg head temp value
 h.avg.model <- lm(head.dmean ~ 
@@ -61,6 +62,7 @@ for(k in 1:length(dayz$date)){
 
 prediction <- mutate(alldat, pred = co.int + air.d.mean * co.air.dmean + co.UAA * UAA..ft2.+
                      co.elev * elev.mean + co.slope * slope.mean)
+#write.csv(prediction, file = "prediction.csv")
 ggplot(prediction, aes(x = pred,
                        y = head.dmean))+
   geom_point(aes(color = shed))+

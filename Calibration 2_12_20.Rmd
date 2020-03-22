@@ -99,16 +99,16 @@ Successfully calculated curves to correct data, now need to apply corrections
 cali <- read.csv("calibrations.2_12_20.csv")
 fog <- read.csv("Formatted.temps.tall_7_17.csv")
 
-#remove sensor 38
-#cali <- filter(cali, sensor != "138")
+#remove sensor 138
+cali <- filter(cali, sensor != "138")
 #seeing which sensors I am missing
 deployed <- unique(fog$sensor)
 calibrated <- unique(cali$sensor)
 diff <- setdiff(deployed, calibrated)
 
-deployed <- as.integer(unique(fog$sensor))
-calibrated <- as.integer(unique(cali$sensor))
-diff <- setdiff(deployed, calibrated)
+#deployed <- as.integer(unique(fog$sensor))
+#calibrated <- as.integer(unique(cali$sensor))
+#diff <- setdiff(deployed, calibrated)
 #remove sensors I wasn't able to calibrate
 fog1 <- filter(fog, sensor %in% calibrated)
 #add coeffs to data
@@ -120,13 +120,39 @@ cali.fog.dayz <- select(cali.fog, temp.cor, rnd.dates, site, type, shed)
 cali.fog.dayz$rnd.dates <- ymd_hms(cali.fog.dayz$rnd.dates)
 ```
 
-Basic time series
+```{r}
+#Checking data 
+GG <- filter(cali.fog.dayz, shed == "GG")
+#remove one LS and one wind- cant tell which is which
+ULB <- filter(cali.fog.dayz, shed == "ULB")
+#remove 3CB
+RMO <- filter(cali.fog.dayz, shed == "RMO")
+#remove 2CA
+MUL <- filter(cali.fog.dayz, shed == "MUL")
+
+double <- c("GC300A", "GC300B")
+
+GG1 <- filter(cali.fog.dayz, site %in% double)
+
+ggplot(GG1, aes(x = rnd.dates, y = temp.cor))+
+  geom_line(aes(color = site))+
+  theme_classic()
+```
+
+```{r}
+thechosen <- c("W600B", "LS180A", "W400A", "GC100B", "LS0A", "MUL2HA", "RMO1HA", "RMO2CB", "RMO2HA", "ULB3CA" )
+```
+
+
+Basic time series- What I actually did before to process the data
 ```{r}
 #formatting time to beginning and end of deployment period
 #start <- mdy_hm("6-25-19 12:10")
 #end <- mdy_hm("7-5-19 12:10")
 #timeseries <- filter(cali.fog.dayz, rnd.dates >= start)
 #timeseries <- filter(cali.fog.dayz, rnd.dates <=
+
+cali.fog.dayz <- pot
 
 ULB <- filter(cali.fog.dayz, shed == "ULB")
 ulb.sites <- unique(ULB$site)
@@ -143,12 +169,14 @@ ulb.char <- as.character(ulb.sites)
 rmo.char <- as.character(rmo.sites)
 mul.char <- as.character(mul.sites)
 all.ts <- c(gg.char, ulb.char, rmo.char, mul.char)
-double <- c("W600B", "LS180B", "W400B", "GC100B", "LS0B", "MUL2HB", "RMO1HB", "RMO2CA", "RMO2HB", "ULB3CB" )
 
-one.each <- setdiff(all.ts, double)
+#selecting duplicates that I want to remove
+the.un.chosen <- c("W600A", "LS180B", "W400B", "GC100A", "GC300B", "LS0B", "MUL2HB", "RMO1HB", "RMO2CA", "RMO2HB", "ULB3CB" )
+
+thechosen <- setdiff(all.ts, the.un.chosen)
 #for initial assessment  
 
-timeseries <- cali.fog.dayz %>% filter(site %in% one.each)
+timeseries <- cali.fog.dayz %>% filter(site %in% thechosen)
 timeseries$site <- gsub('.{1}$', '', timeseries$site)
 timeseries$site <- gsub('.{1}$', '', timeseries$site)
 
@@ -196,7 +224,7 @@ test <- filter(rug, rnd.dates == "2019-06-15 10:10:00")
 hugrug <- left_join(hug, rug, by = c("site", "rnd.dates"))
 hugrugug <- left_join(hugrug, ug, by = c("site"))
 
-#write.csv(hugrugug, file = "cor_data_and_topo_2_19.csv")
+#write.csv(hugrugug, file = "cor_data_and_topo_3_9.csv")
 
 ulb.ts <- brush %>% filter(shed == "ULB")
 mul.ts <- brush %>% filter(shed == "MUL")
@@ -301,7 +329,7 @@ gg.ts.plot
 ```{r}
 #making plots for story board
 #use "cor_data_and_topo_2_19.csv"
-pot <- read.csv("cor_data_and_topo_2_19.csv")
+pot <- read.csv("cor_data_and_topo_3_9.csv")
 pot$rnd.dates <- ymd_hms(pot$rnd.dates)
 
 #adding averages
@@ -321,7 +349,7 @@ potet <- mutate(potet, elev.mean.meters = elev.mean * 0.3048,
 
 format.potet <- select(potet, temp.cor, rnd.dates, site, type, shed, airT, downT, slope.mean, elev.mean.meters, uaa.m2, avg.headtemp, avg.airtemp, med.headtemp, med.airtemp)
 
-#write.csv(format.potet, file = "data.for.analysis_3_4.csv")
+#write.csv(format.potet, file = "data.for.analysis_3_9.csv")
 #plot drainage area vs all temps
 #outlier is probably ls- from spikes in temps that correspond with precip- remove them?
 gronk1 <- ggplot(potet, aes(y = med.headtemp,
@@ -501,16 +529,510 @@ ID <- c("FallA", "FallB", "SpringA", "SpringB","Summer")
 GC.means <- data.frame(means, airT, ID)
 
 #plot them all
-gc.fall2017 <- select(fall, temptime, AirTF, GC0AF)%>%
+gc.fall2017A <- select(fall, temptime, AirTF, GC0AF)%>%
   rename(datetime = temptime, airT = AirTF, headT = GC0AF)%>%
-  mutate(deployment = "Fall 2017")
-gc.spring2017 <- select(spring, temptime, AirTS, GC0AS)%>%
+  mutate(deployment = "Fall 2017 A")
+gc.spring2017A <- select(spring, temptime, AirTS, GC0AS)%>%
   rename(datetime = temptime, airT = AirTS, headT = GC0AS)%>%
-  mutate(deployment = "Spring 2017")
+  mutate(deployment = "Spring 2017 A")
+#sensor Bs- went on to plot, A was weird for both
+gc.fall2017B <- select(fall, temptime, AirTF, GC0BF)%>%
+  rename(datetime = temptime, airT = AirTF, headT = GC0BF)%>%
+  mutate(deployment = "Fall 2017 B")
+gc.spring2017B <- select(spring, temptime, AirTS, GC0BS)%>%
+  rename(datetime = temptime, airT = AirTS, headT = GC0BS)%>%
+  mutate(deployment = "Spring 2017 B")
+
 gc.summer2019 <- select(GC.summer, rnd.dates, airT, temp.cor)%>%
   rename(datetime = rnd.dates, headT = temp.cor)%>%
   mutate(deployment = "Summer 2019")
 
+#format time column so that they bind smoothly- shouldve done this earlier in the code
+gc.fall2017A$datetime <- mdy_hm(gc.fall2017A$datetime)
+gc.spring2017A$datetime <- mdy_hm(gc.spring2017A$datetime)
+gc.fall2017B$datetime <- mdy_hm(gc.fall2017B$datetime)
+gc.spring2017B$datetime <- mdy_hm(gc.spring2017B$datetime)
+gc.summer2019$datetime <- ymd_hms(gc.summer2019$datetime)
+
+all.gc <- bind_rows(gc.spring2017A, gc.spring2017B, gc.fall2017A, gc.fall2017B, gc.summer2019)
+
+ggplot(all.gc, aes(x = datetime))+
+  geom_line(aes(y = headT, color = deployment))+
+  geom_line(aes(y = airT, color = deployment), linetype = "dotted")+
+  facet_wrap(deployment ~. , scales = "free_x")+
+  theme_classic()+
+  theme(legend.position = "none")
+```
+
+```{r}
+#do the same thing but with wind
+```
+
+```{r}
+#predict temps through time but with just one metric, and plot against airT- the r=adj r2 or the resid
+#predict daily mean of head temp, using individual topo metrics
+##actual code##
+#using potet df
+
+potet <- read.csv("data.for.analysis_3_9.csv")
+potet$rnd.dates <- ymd_hms(potet$rnd.dates)
+temps <- potet %>% mutate(day = floor_date(rnd.dates, "day"))
+
+shack <- temps%>%
+  group_by(site, day)%>%
+  summarise(d.avg.headtemp = mean(temp.cor, na.rm = TRUE), 
+            d.avg.airtemp = mean(airT),
+            d.med.headtemp = median(temp.cor, na.rm = TRUE),
+            d.med.airtemp = median(airT))
+ungroup(shack)
+
+#shack <- shack[complete.cases(shack),]
+
+comb <- inner_join(temps, shack, by = c("site", "day"))%>%
+  distinct()
+#successfully added daily stats, now regress
+
+#calculate lm for each day at each site
+atak.day <- select(comb, -c(rnd.dates, temp.cor, airT, downT, avg.headtemp, avg.airtemp, med.headtemp, med.airtemp, X))
+atak.day <- unique(atak.day)
+#atak.day <- atak.day[complete.cases(atak.day),]
+
+dayz <- select(atak.day, day)
+dayzd <- unique(dayz)
+dayzd$num <- 1:nrow(dayzd)
+
+ daf <- dayzd$day[2]
+  df <- filter(atak.day, day == daf)
+
+for(k in 1:length(dayzd$num)){
+  daf <- dayzd$day[k]
+  df <- filter(atak.day, day == daf)
+  #run a regression for each topo metric
+  reg.elev <- lm(d.avg.headtemp ~ elev.mean.meters, data = df)
+  reg.slope <- lm(d.avg.headtemp ~ slope.mean, data = df)
+  reg.uaa <- lm(d.avg.headtemp ~ uaa.m2, data = df)
+  #
+  r2.elev <- summary(reg.elev)$r.squared
+  r2.slope <- summary(reg.slope)$r.squared
+  r2.uaa <- summary(reg.uaa)$r.squared
+  co.elev <- coefficients(reg.elev)
+  co.slope <- coefficients(reg.slope)
+  co.uaa <- coefficients(reg.uaa)
+  #output
+  temp <- mutate(df,
+                 r2.elev = r2.elev,
+                 r2.slope = r2.slope,
+                 r2.uaa = r2.uaa,
+                 co.elev.int = co.elev[1],
+                 co.elev = co.elev[2],
+                 co.slope.int = co.slope[1],
+                 co.slope = co.slope[2],
+                 co.uaa.int = co.uaa[1],
+                 co.uaa = co.uaa[2])
+  if(k == 1) alldat <- temp
+  if(k > 1) alldat <- rbind(alldat, temp)
+}
+
+agg <- alldat
+
+#time to plot metrics r2 through time
+agg.tall <- select(agg, site, shed, day, d.avg.airtemp, r2.elev,  r2.slope, r2.uaa, co.elev.int,      co.elev, co.slope.int, co.slope, co.uaa.int, co.uaa)%>%
+   gather(key= "metric", value = "value", -site, -shed, -day, -d.avg.airtemp)
+
+#problem with airT at RMO and MUL
+unique((agg.tall.1$site[is.na(agg.tall.1$d.avg.airtemp)]))
+
+agg.tall.1 <- filter(agg.tall, site != "RMO2")%>%
+  filter(site != "RMO3")%>%
+  filter(site != "RMO1")%>%
+  filter(site != "MUL2")
+
+ggplot(agg.tall.1, aes(x = d.avg.airtemp))+
+  geom_line(aes(y = value))+
+  facet_wrap(metric ~., free)+
+  theme_classic()
+
+ggplot(atak.day, aes(x = day, y = d.avg.headtemp))+
+  geom_line()
+  
+
+test <- read.csv("pred.coeffs.3_11.csv")
+```
+
+
+3/8/20
+
+Its time to finish the work
+It is time to finish
+It is time to stop
+
+Going to look at ICP data, then make final plots, then that is it. No more anaylsis
+```{r}
+icp <- read.csv("ICP results.csv", 
+                colClasses=c("integer", rep("factor", 5), rep("numeric", 10)))
+
+
+icp[icp == "n.a."] <- NA
+
+icp$sodium <- as.numeric(levels(icp$sodium))[icp$sodium]
+icp <- filter(icp, type == "samp")%>%
+  select(-No., -Name, -type, -date)%>%
+  pivot_longer(cols = c(-shed, -site), names_to = "ions", values_to = "value")
+#GG2 = GC, GG3 = LS
+
+#make it tall
+
+
+ggplot(icp, aes(site))+
+  geom_bar()+
+  theme_classic()
+```
+
+```{r}
+#getting values of slope and stuff for my table of info
+#use potet
+pin <- select(potet, site, slope.mean, elev.mean.meters, uaa.m2)
+pin <- unique(pin)
+
+write.csv(pin, file = "topometsfortable.csv")
+```
+
+Basic time series
+```{r}
+
+cali.fog.dayz <- pot
+
+ULB <- filter(cali.fog.dayz, shed == "ULB")
+ulb.sites <- unique(ULB$site)
+GG <- filter(cali.fog.dayz, shed == "GG")
+gg.sites <- unique(GG$site)
+RMO <- filter(cali.fog.dayz, shed == "RMO")
+rmo.sites <- unique(RMO$site)
+MUL <- filter(cali.fog.dayz, shed == "MUL")
+mul.sites <- unique(MUL$site)
+
+
+gg.char <- as.character(gg.sites)
+ulb.char <- as.character(ulb.sites)
+rmo.char <- as.character(rmo.sites)
+mul.char <- as.character(mul.sites)
+all.ts <- c(gg.char, ulb.char, rmo.char, mul.char)
+
+#for initial assessment  
+
+timeseries <- cali.fog.dayz %>% filter(site %in% one.each)
+
+feed <- timeseries %>% mutate_each(list(as.character), site, type, shed)
+feedy <- feed %>%
+  mutate(type = replace(type, type == "channel", "Downstream"),
+         type = replace(type, type == "head", "Head"),
+         site = replace(site, site == "W60", "Wind"),
+         site = replace(site, site == "W40", "Wind"),
+         site = replace(site, site == "GC10", "Glac"),
+         site = replace(site, site == "GC30", "Glac"),
+         site = replace(site, site == "LS", "Land"),
+         site = replace(site, site == "LS18", "Land"))
+
+#Before I can plot airT stuff I need to get some kind of AirT data into my df
+#comine datasets by time and shed
+temps.air <- filter(feedy, type == "air") %>% 
+  select(shed, temp.cor, rnd.dates) %>% 
+  rename(airT = temp.cor)
+
+doob <- filter(feedy, type != "air")
+
+#brush is the new master datasheet
+brush <- left_join(doob, temps.air, by = c("shed", "rnd.dates"))
+#read in topo metrics attached to old data
+dogg <- read.csv("Tempsanddata_11_8.csv")
+dg <- select(dogg, Site, type, UAA..ft2., slope.mean, elev.mean)%>%
+  rename(site = Site)
+yg <- unique(dg)
+row.names(yg) <- 1:nrow(yg)
+#removing the duplicate mul2
+ug <- slice(yg, -7)%>%
+  select(-type)%>%
+  mutate_each(list(as.character), site)
+
+#brush includes downstream temps
+rug <- filter(brush, type == "Downstream")%>%
+  select(temp.cor, rnd.dates, site)%>%
+  rename(downT = temp.cor)
+hug <- filter(brush, type == "Head")
+
+#testing trying to figure out what is happening
+test <- filter(rug, rnd.dates == "2019-06-15 10:10:00")
+#need to join topo from ug, downstream temps from rug, everything from hug
+hugrug <- left_join(hug, rug, by = c("site", "rnd.dates"))
+hugrugug <- left_join(hugrug, ug, by = c("site"))
+
+#write.csv(hugrugug, file = "cor_data_and_topo_2_19.csv")
+
+ulb.ts <- brush %>% filter(shed == "ULB")
+mul.ts <- brush %>% filter(shed == "MUL")
+rmo.ts <- brush %>% filter(shed == "RMO")
+gg.ts <- brush %>% filter(shed == "GG")
+#ulb
+rmo.ts.plot <- ggplot(data = rmo.ts)+
+  geom_line(aes(x = rnd.dates,
+                y = temp.cor,
+                
+                color = site,
+                linetype = type), 
+            size = 1)+
+  scale_linetype_manual(labels = c( "Downstream","Head"),
+                        values=c("solid", "dotted"),
+                        name = "Location")+
+   scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  xlab(" ")+
+  ylab("Temperature (C)")+
+  ylim(9, 19)+
+  theme_classic()+
+  theme(text= element_text(size=17),
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))
+rmo.ts.plot
+#rmo
+ulb.ts.plot <- ggplot(data = ulb.ts)+
+  geom_line(aes(x = rnd.dates,
+                y = temp.cor,
+                color = site,
+                linetype = type), 
+            size = 1.5)+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  scale_linetype_manual(values=c("solid", "dotted"),
+                        name = "Location",
+                        labels = c("Downstream", "Head"))+
+  xlab( " ")+
+  ylab("Temperature (C)")+
+  ylim(9, 19)+
+  theme_classic()+
+  theme(text= element_text(size=17),
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))+
+  guides(color = guide_legend(order = 1), 
+              linetype = guide_legend(order = 2))
+ulb.ts.plot 
+#mul
+mul.ts.plot <- ggplot(data = mul.ts)+
+  geom_line(aes(x = rnd.dates,
+                y = temp.cor,
+                color = site,
+                linetype = type), 
+            size = 1.5)+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  scale_linetype_manual(values=c( "dotted","solid"),
+                        name = "Location",
+                        labels = c("Head", "Downstream"))+
+  xlab( " ")+
+  ylab("Temperature (C)")+
+  ylim(9, 19)+
+  theme_classic()+
+  theme(text= element_text(size=17),
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))
+mul.ts.plot
+#gg
+gg.names <- data.frame("names" =c("Wind","Glacier", "Glacier","Landslide","Wind","Landslide"), 
+                       "site" = c("W40","GC10","GC30","LS18","W60","LS"))
+gg.ts <- gg.ts %>% inner_join(gg.names, brush, by = "site")
+
+gg.ts.plot <- ggplot(data = gg.ts, aes(x = rnd.dates,
+                y = temp.cor,
+                color = site))+
+  geom_line(aes(linetype = type), size = 1.5)+
+  scale_color_brewer(palette = "Dark2",
+                     name = "Stream")+
+  scale_linetype_manual(values=c("solid", "dotted"),
+                        name = "Location",
+                        labels = c("Downstream", "Head"))+
+  xlab( " ")+
+  ylab("Temperature (C)")+
+  ylim(9, 19)+
+  theme_classic()+
+  theme(text= element_text(size=17),
+        axis.text.x = element_text(size = 17),
+        axis.text.y = element_text(size = 17))
+gg.ts.plot
+
+
+
+
+#ggsave("ulb.ts.png", plot = ulb.ts.plot, width = 8, height = 5, units = c("in"))
+#ggsave("mul.ts.png", plot = mul.ts.plot, width = 8, height = 5, units = c("in"))
+#ggsave("rmo.ts.png", plot = rmo.ts.plot, width = 8, height = 5, units = c("in"))
+#ggsave("gg.ts.png", plot = gg.ts.plot, width = 8, height = 5, units = c("in"))
 
 ```
 
+FIGURE 2: EXAMPLE TIMESERIES
+```{r}
+#making a simple plot showing diff bewteen downstream and head temps
+potet <- read.csv("data.for.analysis_3_9.csv")
+potet$rnd.dates <- ymd_hms(potet$rnd.dates)
+
+#formatting time to beginning and end of deployment period
+start <- mdy_hm("6-25-19 00:00")
+end <- mdy_hm("7-1-19 00:00")
+simple.ts <- filter(potet, rnd.dates < end)%>%
+  filter(rnd.dates > start)%>% 
+  filter(site == "ULB2")%>%
+  select(temp.cor, rnd.dates, downT, airT)%>%
+  rename(Head = temp.cor, Downstream = downT, Air = airT)%>%
+  pivot_longer(cols = -rnd.dates, 
+               names_to = "type",
+               values_to = "value")
+
+noair.simple.ts <- filter(simple.ts, type != "Air")
+#simple ts plot- show diff between head and downstream site
+slide.ts.plot <- ggplot(data = simple.ts)+
+  geom_line(aes(x = rnd.dates,
+                y = value,
+                linetype = type), 
+            size = 1.25,
+            color = "dimgrey")+
+  scale_linetype_manual(values=c("dotted", "twodash", "solid"),
+                        name = "Location",
+                        labels = c("Air", "Downstream", "Head"))+
+  xlab( " ")+
+  ylab("Temperature (C)")+
+  #ylim(20, 25)+
+  theme_classic()+
+  theme(text= element_text(size=17),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        axis.title.y = element_text(margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        panel.background = element_rect(fill = "transparent"), # bg of the panel
+        plot.background = element_rect(fill = "transparent", color = NA), # bg of the 
+        legend.background = element_rect(fill = "transparent"), # get rid of legend 
+       )
+slide.ts.plot
+
+ggsave("example.ts.plot.png", 
+       plot = slide.ts.plot, 
+       width = 7, height = 4, 
+       units = c("in"),
+       bg = "transparent")
+```
+
+FIGURE 3: TOPO METRICS VS TEMPS
+```{r}
+#making plots for story board
+#use "cor_data_and_topo_2_19.csv"
+pot <- read.csv("cor_data_and_topo_3_9.csv")
+pot$rnd.dates <- ymd_hms(pot$rnd.dates)
+
+#adding averages
+pote <- pot%>%
+  group_by(site)%>%
+  summarise(avg.headtemp = mean(temp.cor, na.rm = TRUE), 
+            avg.airtemp = mean(airT),
+            med.headtemp = median(temp.cor, na.rm = TRUE),
+            med.airtemp = median(airT))
+
+potet <- inner_join(pot, unique(pote), by = c("site"))%>%
+  distinct()
+
+#converting topo metrics to metrics
+potet <- mutate(potet, elev.mean.meters = elev.mean * 0.3048,
+               uaa.m2 = UAA..ft2. * 0.3048 * 0.3048)
+
+format.potet <- select(potet, temp.cor, rnd.dates, site, type, shed, airT, downT, slope.mean, elev.mean.meters, uaa.m2, avg.headtemp, avg.airtemp, med.headtemp, med.airtemp)
+
+#write.csv(format.potet, file = "data.for.analysis_3_9.csv")
+
+#plotting theme
+theme_invis <- function (){
+        theme(text= element_text(size=15),
+              axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+              axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+              panel.background  = element_blank(),
+              plot.background = element_rect(fill="transparent", colour=NA),
+              legend.background = element_rect(fill="transparent", colour=NA),
+              legend.key = element_rect(fill="transparent", colour=NA),
+              panel.border = element_blank(), panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank(), axis.line = element_line(colour = "black", 
+                size = rel(1)))
+}
+
+shed.breaks <- c("GG","ULB","RMO","MUL")
+shed.colors <- c("firebrick4","slateblue4","sienna2","seagreen1")
+shed.shapes <- c(8,9,10,12)
+
+#plotting slope vs avg water T
+elev <- ggplot(potet, aes(x = elev.mean.meters,
+                          y = med.headtemp))+
+  geom_point(aes(shape = shed), size = 4)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  theme_invis()+
+  labs(x = "Mean Elevation (m)",
+       y = "Mean WaterT (C)")+
+  scale_shape_manual(breaks = shed.breaks,
+                    values = shed.shapes,
+                    name = "Watershed")
+elev
+#slope
+slope <- ggplot(potet, aes(x = slope.mean,
+                          y = med.headtemp,
+                          color = shed))+
+  geom_point(size = 4)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  theme_invis()+
+  labs(x = "Mean Slope (%)",
+       y = "Mean WaterT (C)")+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors,
+                    name = "Watershed")
+slope
+#drainage area
+drain <- ggplot(potet, aes(x = uaa.m2,
+                          y = med.headtemp,
+                          color = shed))+
+  geom_point(size = 4)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  theme_invis()+
+  labs(x = "Drainage Area (m2)",
+       y = "Mean WaterT (C)")+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors,
+                    name = "Watershed")
+drain
+
+ggsave(drain, filename = "Ctopoplot1.png", bg = "transparent"
+       ,width = 5, height = 4, units = c("in"))
+ggsave(slope, filename = "Ctopoplot2.png", bg = "transparent"
+       ,width = 5, height = 4, units = c("in"))
+ggsave(elev, filename = "Ctopoplot3.png", bg = "transparent"
+       ,width = 5, height = 4, units = c("in"))
+
+
+
+```
+
+FIGURE 6: DAILY MEAN PREDICTION R2
+```{r}
+#use pred.coeffs.3_11.csv, it is the output of the daily mean prediction stuff
+preds <- read.csv("pred.coeffs.3_11.csv")
+
+r2.data <- filter(preds, metric %in% c("r2.elev", "r2.slope", "r2.uaa"))
+
+r2.plot <- ggplot(r2.data, aes(x = d.avg.airtemp,
+                               y = value))+
+  geom_point()
+#old code below- feel free to delete later
+agg.tall.1 <- filter(agg.tall, site != "RMO2")%>%
+  filter(site != "RMO3")%>%
+  filter(site != "RMO1")%>%
+  filter(site != "MUL2")
+
+ggplot(agg.tall.1, aes(x = d.avg.airtemp))+
+  geom_line(aes(y = value))+
+  facet_wrap(metric ~., free)+
+  theme_classic()
+```
