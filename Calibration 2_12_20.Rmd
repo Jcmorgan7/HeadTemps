@@ -118,6 +118,8 @@ cali.fog$temp.cor <- ((cali.fog$Value * cali.fog$slope) + cali.fog$intercept)
 
 cali.fog.dayz <- select(cali.fog, temp.cor, rnd.dates, site, type, shed)
 cali.fog.dayz$rnd.dates <- ymd_hms(cali.fog.dayz$rnd.dates)
+
+#write.csv(cali.fog.dayz, file = "unformatted_data.3_25.csv")
 ```
 
 ```{r}
@@ -130,7 +132,7 @@ RMO <- filter(cali.fog.dayz, shed == "RMO")
 #remove 2CA
 MUL <- filter(cali.fog.dayz, shed == "MUL")
 
-double <- c("GC300A", "GC300B")
+double <- c("LS180A", "LS180B", "GC300B", "W600A", "W600B")
 
 GG1 <- filter(cali.fog.dayz, site %in% double)
 
@@ -640,23 +642,58 @@ agg.tall <- select(agg, site, shed, day, d.avg.airtemp, r2.elev,  r2.slope, r2.u
    gather(key= "metric", value = "value", -site, -shed, -day, -d.avg.airtemp)
 
 #problem with airT at RMO and MUL
-unique((agg.tall.1$site[is.na(agg.tall.1$d.avg.airtemp)]))
+unique((agg.tall.all$site[is.na(agg.tall.all$d.avg.airtemp)]))
+#add uncorrected airT for these two
+#read in uncorrected data
+uncordata <- read.csv("Formatted.temps.tall_7_17.csv")
+uncordata$rnd.dates <- ymd_hms(uncordata$rnd.dates)
+uncordata.day <- uncordata %>% mutate(day = floor_date(rnd.dates, "day"))
 
-agg.tall.1 <- filter(agg.tall, site != "RMO2")%>%
-  filter(site != "RMO3")%>%
-  filter(site != "RMO1")%>%
-  filter(site != "MUL2")
+#remove everything but site, Value
+rmo.air <- filter(uncordata.day, site == "RMOAir")%>%
+  select(Value, day, shed)%>%
+  group_by(day)%>%
+  summarise(d.avg.airtemp = mean(Value))
+ungroup(rmo.air)
 
-ggplot(agg.tall.1, aes(x = d.avg.airtemp))+
-  geom_line(aes(y = value))+
-  facet_wrap(metric ~., free)+
+#now join airT from RMO to the full corrected data set
+
+no.rmo.agg.tall <- filter(agg.tall, shed != "RMO")
+rmo.agg.tall <- filter(agg.tall, shed == "RMO")%>%
+  select(-d.avg.airtemp)
+
+rmo.agg.tall.air <- left_join(rmo.agg.tall, rmo.air, by = "day")
+
+agg.tall.all <- bind_rows(no.rmo.agg.tall, rmo.agg.tall.air)
+
+
+#agg.tall.1 <- filter(agg.tall, site != "RMO2")%>%
+#  filter(site != "RMO3")%>%
+#  filter(site != "RMO1")%>%
+#  filter(site != "MUL2")
+
+ggplot(agg.tall.all, aes(x = d.avg.airtemp))+
+  geom_point(aes(y = value, color = shed))+
+  facet_wrap(metric ~., scales = "free_y")+
   theme_classic()
 
-ggplot(atak.day, aes(x = day, y = d.avg.headtemp))+
-  geom_line()
-  
+ggplot(agg.tall.all, aes(x = day))+
+  geom_point(aes(y = value))+
+  facet_wrap(metric ~., scales = "free_y")+
+  theme_classic()
 
-test <- read.csv("pred.coeffs.3_11.csv")
+#write.csv(agg.tall.all, file = "pred.coeffs.3_11.csv")
+
+#make finalized plot with r^2, and coefficients
+r2.mets <- c("r2.elev", "r2.slope", "r2.uaa")
+r2.data <- filter(agg.tall.all, metric %in% r2.mets)
+
+r2.plot <- ggplot(r2.data, aes(x = d.avg.airtemp, 
+                               y = value))+
+  geom_point(aes(color = shed))+
+  facet_wrap(metric ~.)+
+  theme_classic()
+r2.plot
 ```
 
 
@@ -868,6 +905,60 @@ gg.ts.plot
 
 ```
 
+FIGURE 1: ONE SITE FROM EACH SHED THROUGH TIME
+```{r}
+#making a simple plot showing diff bewteen downstream and head temps
+potet <- read.csv("data.for.analysis_3_9.csv")
+potet$rnd.dates <- ymd_hms(potet$rnd.dates)
+
+#formatting time to beginning and end of deployment period
+start <- mdy_hm("6-25-19 00:00")
+end <- mdy_hm("7-8-19 00:00")
+single.ts <- filter(potet, rnd.dates < end)%>%
+  filter(rnd.dates > start)%>% 
+  filter(site %in% c("ULB2", "MUL2", "WIND", "RMO3"))%>%
+  select(temp.cor, rnd.dates, downT, shed)%>%
+  rename(Head = temp.cor, Downstream = downT)%>%
+  pivot_longer(cols = -rnd.dates, 
+               names_to = "type",
+               values_to = "value")
+
+shed.breaks <- c("GG","ULB","RMO","MUL")
+shed.colors <- c("firebrick4","slateblue4","sienna2","seagreen1")
+#simple ts plot- show diff between head and downstream site
+slide.ts.plot <- ggplot(data = noair.single.ts)+
+  geom_line(aes(x = rnd.dates,
+                y = value,
+                linetype = type,
+                color = shed))+
+  scale_shape_manual(breaks = shed.breaks,
+                    values = shed.shapes,
+                    name = "Watershed")+
+  scale_linetype_manual(values=c("twodash", "solid"),
+                        name = "Location",
+                        labels = c("Downstream", "Head"))+
+  xlab( " ")+
+  ylab("Temperature (C)")+
+  #ylim(20, 25)+
+  theme_classic()+
+  theme(text= element_text(size=17),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        axis.title.y = element_text(margin = margin(t = 0, r = 15, b = 0, l = 0)),
+        panel.background = element_rect(fill = "transparent"), # bg of the panel
+        plot.background = element_rect(fill = "transparent", color = NA), # bg of the 
+        legend.background = element_rect(fill = "transparent"), # get rid of legend 
+       )
+slide.ts.plot
+
+ggsave("example.ts.plot.png", 
+       plot = slide.ts.plot, 
+       width = 7, height = 4, 
+       units = c("in"),
+       bg = "transparent")
+```
+
+
 FIGURE 2: EXAMPLE TIMESERIES
 ```{r}
 #making a simple plot showing diff bewteen downstream and head temps
@@ -1015,24 +1106,86 @@ ggsave(elev, filename = "Ctopoplot3.png", bg = "transparent"
 
 ```
 
-FIGURE 6: DAILY MEAN PREDICTION R2
+FIGURE 4: R2 AND COEFFICIENTS
 ```{r}
-#use pred.coeffs.3_11.csv, it is the output of the daily mean prediction stuff
-preds <- read.csv("pred.coeffs.3_11.csv")
+pred.cofs <- read.csv("pred.coeffs.3_11.csv")
 
-r2.data <- filter(preds, metric %in% c("r2.elev", "r2.slope", "r2.uaa"))
+#make finalized plot with r^2, and coefficients
+r2.mets <- c("r2.elev", "r2.slope", "r2.uaa")
+r2.data <- filter(pred.cofs, metric %in% r2.mets)
 
-r2.plot <- ggplot(r2.data, aes(x = d.avg.airtemp,
+r2.plot <- ggplot(r2.data, aes(x = d.avg.airtemp, 
                                y = value))+
-  geom_point()
-#old code below- feel free to delete later
-agg.tall.1 <- filter(agg.tall, site != "RMO2")%>%
-  filter(site != "RMO3")%>%
-  filter(site != "RMO1")%>%
-  filter(site != "MUL2")
+  geom_point(aes(color = shed))+
+  facet_wrap(metric ~.)+
+  theme_classic()+
+  theme_invis()+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors,
+                    name = "Watershed")
+r2.plot
 
-ggplot(agg.tall.1, aes(x = d.avg.airtemp))+
-  geom_line(aes(y = value))+
-  facet_wrap(metric ~., free)+
-  theme_classic()
+ggsave(r2.plot, filename = "r2plot.png", bg = "transparent"
+       ,width = 5, height = 3, units = c("in"))
 ```
+
+
+```{r}
+elev <- ggplot(potet, aes(x = elev.mean.meters,
+                          y = med.headtemp))+
+  geom_point(aes(color = shed), size = 4)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  theme_invis()+
+  labs(x = "Mean Elevation (m)",
+       y = "Mean WaterT (C)")+
+  scale_shape_manual(breaks = shed.breaks,
+                    values = shed.shapes,
+                    name = "Watershed")
+elev
+#slope
+slope <- ggplot(potet, aes(x = slope.mean,
+                          y = med.headtemp,
+                          color = shed))+
+  geom_point(size = 4)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  theme_invis()+
+  labs(x = "Mean Slope (%)",
+       y = "Mean WaterT (C)")+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors,
+                    name = "Watershed")
+slope
+#drainage area
+drain <- ggplot(potet, aes(x = uaa.m2,
+                          y = med.headtemp,
+                          color = shed))+
+  geom_point(size = 4)+
+  #geom_smooth(method = 'lm', se = FALSE)+
+  theme_classic()+
+  theme_invis()+
+  labs(x = "Drainage Area (m2)",
+       y = "Mean WaterT (C)")+
+  scale_color_manual(breaks = shed.breaks,
+                    values = shed.colors,
+                    name = "Watershed")
+drain
+
+ggsave(drain, filename = "Ctopoplot1.png", bg = "transparent"
+       ,width = 5, height = 4, units = c("in"))
+ggsave(slope, filename = "Ctopoplot2.png", bg = "transparent"
+       ,width = 5, height = 4, units = c("in"))
+ggsave(elev, filename = "Ctopoplot3.png", bg = "transparent"
+       ,width = 5, height = 4, units = c("in"))
+
+```
+
+SD OF TOPO METRICS
+```{r}
+#sd of topo metrics
+topo <- read.csv("topometsfortable.csv")
+sd(topo$uaa.m2)
+mean(topo$uaa.m2)
+```
+
